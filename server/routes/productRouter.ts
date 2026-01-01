@@ -1,0 +1,35 @@
+import express from "express";
+import * as productController from "../controllers/productController.js";
+import * as authController from "../controllers/authController.js";
+import reviewRouter from "./reviewRouter.js";
+
+const router = express.Router();
+
+// 1. PUBLIC ROUTES
+router.get("/", productController.getAllProducts);
+router.use("/:productId/reviews", reviewRouter);
+router.get("/:id", productController.getProduct);
+
+// 2. PROTECTED ROUTES (Requires Login)
+router.use(authController.protect);
+
+// 3. ADMIN ONLY ROUTES (Restricted)
+router.use(authController.restrictTo("admin"));
+
+router.post(
+  "/",
+  productController.uploadProductImage,
+  productController.resizeProductImage,
+  productController.createProduct
+);
+
+router.patch(
+  "/:id",
+  productController.uploadProductImage,
+  productController.resizeProductImage,
+  productController.updateProduct
+);
+
+router.delete("/:id", productController.deleteProduct);
+
+export default router;
