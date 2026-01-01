@@ -1,0 +1,42 @@
+This is how our matching engine works. Make a document of it. 
+
+1. It fetches Optimized borrower data. It gets this data from the database.
+-- Financial Data
+-- Loan Application
+-- Emploument Detail
+-- Assets Data is also cached. Sometimes it can cause the issues too. 
+
+2. Matcing engine runs using many parallel things.
+-- It finds eligible programs for the borrower.
+   -- Sets status of matching engine for that borrower "Started."
+   -- Finds data again without caching (this data is used without caching)
+   -- If financial data is not found, it does not match any program and end.
+   -- Makes batches of 5 programs for each borrower and saves. If this fails it processes programs one by one.
+-- Finds eligible programs with policy filter.
+   -- Uses Vector Database to find data.
+   -- Uses LLM to match the policies.
+
+3. Performs 1st and 2nd simultaneously.
+
+admin@empatechos.ai
+admin@admin123
+
+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
+
+
+
+https://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@github.com/empatechadsdevelopment-ads/empatech
+
+Strcutering moduling 
+animations
+data put 
+cart items show only to admin whom just added to cart but not ordered 
+add setting and profile customization to both admin user
+refund and policy 
+categoreis 
+create email structure
+set the review customer option 
+add limit 
+add my orders in responsive
+add themes
+best seelers also show ratings and reviews on click go to that product click 
