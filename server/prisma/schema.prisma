@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model User {
   id                    Int      @id @default(autoincrement())
   name                  String
@@ -22,19 +23,28 @@ model User {
   orders                Order[]
 }
 
+model Category {
+  id              Int       @id @default(autoincrement())
+  name            String    @unique
+  image           String?
+  discountPercent Float?    @default(0)
+  createdAt       DateTime  @default(now())
+}
+
 model Product {
-  id          Int       @id @default(autoincrement())
-  name        String
-  description String?
-  price       Float
-  category    String
-  image       String
-  section     String?
-  stock       Int       @default(0)
-  createdAt   DateTime  @default(now())
-  cartItems   CartItem[]
-  reviews     Review[]
-  orderItems  OrderItem[]
+  id              Int       @id @default(autoincrement())
+  name            String
+  description     String?
+  price           Float
+  category        String
+  image           String
+  section         String?
+  stock           Int       @default(0)
+  discountPercent Float?    @default(0)
+  createdAt       DateTime  @default(now())
+  cartItems       CartItem[]
+  reviews         Review[]
+  orderItems      OrderItem[]
 }
 
 model Cart {
@@ -55,13 +65,15 @@ model CartItem {
 }
 
 model Order {
-  id          Int         @id @default(autoincrement())
-  userId      Int
-  user        User        @relation(fields: [userId], references: [id])
-  items       OrderItem[]
-  totalAmount Float
-  status      String      @default("pending")
-  createdAt   DateTime    @default(now())
+  id              Int         @id @default(autoincrement())
+  userId          Int
+  user            User        @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+  totalAmount     Float
+  status          String      @default("pending")
+  shippingAddress String?
+  paymentMethod   String?
+  createdAt       DateTime    @default(now())
 }
 
 model OrderItem {
@@ -75,12 +87,31 @@ model OrderItem {
 }
 
 model Review {
-  id        Int      @id @default(autoincrement())
-  text      String
-  rating    Int
-  productId Int
-  product   Product  @relation(fields: [productId], references: [id])
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  text       String
+  rating     Int
+  isApproved Boolean  @default(false)
+  images     String[] @default([])
+  videos     String[] @default([])
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id])
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Offer {
+  id              Int       @id @default(autoincrement())
+  title           String
+  description     String?
+  discountPercent Float
+  targetType      String    // "product" or "category"
+  targetId        Int?      // productId or categoryId (null for all products)
+  targetName      String?   // product name or category name for display
+  startDate       DateTime?
+  endDate         DateTime?
+  isActive        Boolean   @default(true)
+  showBanner      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }

@@ -136,6 +136,11 @@ export const protect = catchAsync(async (req: UserRequest, res: Response, next: 
     );
   }
 
+  // Debug logging in development
+  if (process.env.NODE_ENV === "development") {
+    console.log("[protect] User found:", { id: freshUser.id, email: freshUser.email, role: freshUser.role, roleType: typeof freshUser.role });
+  }
+
   req.user = freshUser;
 
   next();
@@ -143,11 +148,46 @@ export const protect = catchAsync(async (req: UserRequest, res: Response, next: 
 
 export const restrictTo = (...roles: string[]) => {
   return (req: UserRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role!)) {
+    // Debug logging in development
+    if (process.env.NODE_ENV === "development") {
+      console.log("[restrictTo] Allowed roles:", roles);
+      console.log("[restrictTo] User:", req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : "null");
+    }
+    
+    // Check if user exists
+    if (!req.user) {
+      return next(
+        new AppError("You are not logged in! Please log in to get access.", 401)
+      );
+    }
+    
+    // Check if user has a role
+    const userRole = req.user.role;
+    if (!userRole) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[restrictTo] ERROR: User role is missing/null/undefined");
+      }
+      return next(
+        new AppError("You do not have permission to do this action. User role is missing.", 403)
+      );
+    }
+    
+    // Check if user's role is in the allowed roles (case-insensitive comparison)
+    const normalizedUserRole = userRole.toLowerCase().trim();
+    const normalizedAllowedRoles = roles.map(role => role.toLowerCase().trim());
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("[restrictTo] Normalized user role:", normalizedUserRole);
+      console.log("[restrictTo] Normalized allowed roles:", normalizedAllowedRoles);
+      console.log("[restrictTo] Match:", normalizedAllowedRoles.includes(normalizedUserRole));
+    }
+    
+    if (!normalizedAllowedRoles.includes(normalizedUserRole)) {
       return next(
         new AppError("You do not have permission to do this action", 403)
       );
     }
+    
     next();
   };
 };

@@ -222,7 +222,7 @@ export default function ReviewsPage() {
                                     </span>
                                 </div>
 
-                                <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${review.isApproved ? 'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-400'}`}>
+                                <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${review.isApproved ? 'bg-zinc-200 text-black dark:bg-zinc-700 dark:text-white' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'}`}>
                                     {review.isApproved ? 'Approved' : 'Pending'}
                                 </div>
                             </div>

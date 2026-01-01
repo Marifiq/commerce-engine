@@ -7,6 +7,9 @@ const router = express.Router();
 
 // 1. PUBLIC ROUTES
 router.get("/", productController.getAllProducts);
+router.get("/best-sellers", productController.getBestSellers);
+router.get("/off", productController.getDiscountedProducts);
+router.get("/categories", productController.getCategories);
 router.use("/:productId/reviews", reviewRouter);
 router.get("/:id", productController.getProduct);
 

@@ -48,17 +48,19 @@ export function Modal({
                         {message}
                     </div>
 
-                    <div className="flex gap-3 w-full">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 px-4 py-3 rounded-2xl border-2 border-zinc-100 dark:border-zinc-800 text-zinc-500 font-black uppercase tracking-widest text-[10px] hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
-                        >
-                            {cancelText}
-                        </button>
+                    <div className={`flex gap-3 w-full ${!cancelText ? 'justify-center' : ''}`}>
+                        {cancelText && (
+                            <button
+                                onClick={onClose}
+                                className="flex-1 px-4 py-3 rounded-2xl border-2 border-zinc-100 dark:border-zinc-800 text-zinc-500 font-black uppercase tracking-widest text-[10px] hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+                            >
+                                {cancelText}
+                            </button>
+                        )}
                         <button
                             onClick={onConfirm}
                             disabled={loading}
-                            className={`flex-1 px-4 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-black/5 cursor-pointer flex items-center justify-center gap-2 ${type === 'danger'
+                            className={`${cancelText ? 'flex-1' : 'px-8'} px-4 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-black/5 cursor-pointer flex items-center justify-center gap-2 ${type === 'danger'
                                 ? 'bg-black text-white dark:bg-white dark:text-black'
                                 : 'bg-black text-white dark:bg-white dark:text-black'
                                 } hover:opacity-90 disabled:opacity-50`}

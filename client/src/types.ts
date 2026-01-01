@@ -18,12 +18,25 @@ export interface UserState {
     error: string | null;
 }
 
+// --- Category Types ---
+export interface Category {
+    id: number;
+    name: string;
+    image?: string | null;
+    discountPercent?: number;
+    createdAt: string;
+}
+
 // --- Product Types ---
 export interface Product {
     id: number;
     name: string;
     description?: string;
     price: number;
+    originalPrice?: number;
+    discountedPrice?: number;
+    discountPercent?: number;
+    hasDiscount?: boolean;
     category: string;
     image: string;
     section?: string;
@@ -104,7 +117,25 @@ export interface Order {
     id: number;
     userId: number;
     items: OrderItem[];
-    total: number;
+    total?: number; // Legacy field, prefer totalAmount
+    totalAmount?: number; // Matches backend schema
     status: string;
     createdAt: string;
+}
+
+// --- Offer Types ---
+export interface Offer {
+    id: number;
+    title: string;
+    description?: string | null;
+    discountPercent: number;
+    targetType: string; // "product", "category", or "all"
+    targetId?: number | null;
+    targetName?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    isActive: boolean;
+    showBanner: boolean;
+    createdAt: string;
+    updatedAt: string;
 }

@@ -1,188 +1,164 @@
 import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
 import bcrypt from 'bcryptjs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Cleaning database...');
+  const dbPath = path.join(__dirname, '../../client/mock-server/db.json');
+  if (!fs.existsSync(dbPath)) {
+    console.error('db.json not found at', dbPath);
+    return;
+  }
 
-  // 1. Clean data (Order is important because of relationships)
+  const data = JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
+
+  console.log('Cleaning existing data...');
   await prisma.review.deleteMany();
-  await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
   await prisma.cartItem.deleteMany();
   await prisma.cart.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
   await prisma.product.deleteMany();
   await prisma.user.deleteMany();
 
-  console.log('Seeding new data...');
-
-  // 2. Create Users
-  const hashedPassword = await bcrypt.hash('1234', 12);
-
-  const admin = await prisma.user.create({
-    data: {
-      name: 'Muhib Arshad',
-      email: 'muhib@example.com',
-      password: hashedPassword,
-      role: 'admin',
-      cart: { create: {} }
-    },
-  });
-
-  const user1 = await prisma.user.create({
-    data: {
-      name: 'John Doe',
-      email: 'john@example.com',
-      password: hashedPassword,
-      role: 'user',
-      cart: { create: {} }
-    },
-  });
-
-  const user2 = await prisma.user.create({
-    data: {
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      password: hashedPassword,
-      role: 'user',
-      cart: { create: {} }
-    },
-  });
-
-  const user3 = await prisma.user.create({
-    data: {
-      name: 'Ali Abdullah',
-      email: 'ali@example.com',
-      password: hashedPassword,
-      role: 'user',
-      cart: { create: {} }
-    },
-  });
-
-  console.log('Users seeded.');
-
-  // 3. Create Products with real images from /img/products
-  const productsData = [
-    { 
-      name: 'Classic White Oxford', 
-      price: 85.00, 
-      category: 'Formal', 
-      image: '/img/products/white-shirt.png', 
-      section: 'New Arrivals', 
-      stock: 50,
-      description: 'A timeless classic for any formal occasion. Made from 100% premium cotton.'
-    },
-    { 
-      name: 'Midnight Blue Silk', 
-      price: 150.00, 
-      category: 'Luxury', 
-      image: '/img/products/midnight-blue-shirt.png', 
-      section: 'Best Sellers', 
-      stock: 20,
-      description: 'Experience pure luxury with our signature midnight blue silk shirt.'
-    },
-    { 
-      name: 'Slate Grey Linen', 
-      price: 65.00, 
-      category: 'Casual', 
-      image: '/img/products/grey-linen-shirt.png', 
-      section: 'Summer Collection', 
-      stock: 40,
-      description: 'Breathable and stylish, perfect for those warm summer evenings.'
-    },
-    { 
-      name: 'Charcoal Slim Fit', 
-      price: 95.00, 
-      category: 'Business', 
-      image: '/img/products/charcoal-slim-fit.png', 
-      section: 'Best Sellers', 
-      stock: 35,
-      description: 'A modern cut for the modern professional. Sharpen your look.'
-    },
-    { 
-      name: 'Monaco Blue Linen', 
-      price: 70.00, 
-      category: 'Casual', 
-      image: '/img/products/monaco-blue-linen.png', 
-      section: 'Summer Collection', 
-      stock: 25,
-      description: 'Vibrant and comfortable. Bring the Riviera style to your wardrobe.'
-    },
-    { 
-      name: 'Jet Black Silk', 
-      price: 155.00, 
-      category: 'Luxury', 
-      image: '/img/products/black-silk-shirt.png', 
-      section: 'New Arrivals', 
-      stock: 15,
-      description: 'Deep black, high luster. The ultimate statement shirt.'
-    },
-  ];
-
-  const createdProducts = [];
-  for (const p of productsData) {
-    const product = await prisma.product.create({ data: p });
-    createdProducts.push(product);
+  console.log('Seeding users...');
+  const userMap = new Map(); // originalId -> newId
+  const emailMap = new Map(); // email -> newId
+  
+  for (const u of data.users) {
+    const hashedPassword = await bcrypt.hash(u.password || 'password123', 12);
+    const user = await prisma.user.create({
+      data: {
+        name: u.name,
+        email: u.email,
+        password: hashedPassword,
+        role: u.role || 'user',
+      }
+    });
+    userMap.set(u.id, user.id);
+    emailMap.set(u.email, user.id);
   }
 
-  console.log('Products seeded.');
+  console.log('Seeding products...');
+  const productMap = new Map(); // originalId -> newId
+  for (const p of data.products) {
+    const product = await prisma.product.create({
+      data: {
+        name: p.name,
+        description: p.description || '',
+        price: Number(p.price) || 0,
+        category: p.category || 'Uncategorized',
+        image: p.image || '/images/placeholder.jpg',
+        stock: 100,
+        section: p.section || null,
+      }
+    });
+    productMap.set(p.id, product.id);
+  }
 
-  // 4. Create Reviews
-  await prisma.review.createMany({
-    data: [
-      { text: "Best shirt I've ever owned!", rating: 5, productId: createdProducts[0].id, userId: user1.id },
-      { text: "Amazing quality and fits perfectly.", rating: 5, productId: createdProducts[1].id, userId: user2.id },
-      { text: "Great fabric, very breathable.", rating: 4, productId: createdProducts[2].id, userId: user1.id },
-      { text: "Looks very professional.", rating: 5, productId: createdProducts[3].id, userId: user3.id },
-    ]
-  });
+  console.log('Seeding reviews...');
+  for (const r of data.reviews) {
+    let userEmail = typeof r.user === 'string' ? r.user : r.user?.email;
+    let userId = userEmail ? emailMap.get(userEmail) : null;
+    
+    if (!userId) {
+        const firstUser = await prisma.user.findFirst();
+        userId = firstUser?.id;
+    }
 
-  console.log('Reviews seeded.');
+    const productId = productMap.get(r.productId);
 
-  // 5. Create Cart Items
-  const user1Cart = await prisma.cart.findUnique({ where: { userId: user1.id } });
-  if (user1Cart) {
-    await prisma.cartItem.createMany({
-      data: [
-        { cartId: user1Cart.id, productId: createdProducts[4].id, quantity: 1 },
-        { cartId: user1Cart.id, productId: createdProducts[5].id, quantity: 2 },
-      ]
+    if (userId && productId) {
+      await prisma.review.create({
+        data: {
+          text: r.text || '',
+          rating: Number(r.rating) || 5,
+          isApproved: r.isApproved ?? true,
+          images: r.images || [],
+          videos: r.videos || [],
+          productId,
+          userId,
+          createdAt: new Date(r.createdAt || Date.now()),
+        }
+      });
+    }
+  }
+
+  console.log('Seeding orders...');
+  for (const o of (data.orders || [])) {
+    const userId = userMap.get(o.userId) || emailMap.get(o.userEmail);
+    if (!userId) continue;
+
+    const order = await prisma.order.create({
+      data: {
+        userId,
+        totalAmount: Number(o.total) || 0,
+        status: o.status || 'pending',
+        createdAt: new Date(o.createdAt || Date.now()),
+        items: {
+          create: (o.items || []).map((item: any) => ({
+            productId: productMap.get(item.productId),
+            quantity: item.quantity || 1,
+            price: Number(item.product?.price) || 0,
+          })).filter((i: any) => i.productId)
+        }
+      }
     });
   }
 
-  console.log('Cart items seeded.');
-
-  // 6. Create Orders
-  await prisma.order.create({
-    data: {
-      userId: user1.id,
-      totalAmount: (createdProducts[0].price * 2),
-      status: 'delivered',
-      items: {
-        create: [
-          { productId: createdProducts[0].id, quantity: 2, price: createdProducts[0].price }
-        ]
+  console.log('Seeding abandoned carts...');
+  // Get all users and products for creating abandoned carts
+  const allUsers = await prisma.user.findMany({ where: { role: 'user' } });
+  const allProducts = await prisma.product.findMany();
+  
+  if (allUsers.length > 0 && allProducts.length > 0) {
+    // Create abandoned carts for some users (not all, to make it realistic)
+    const usersWithCarts = allUsers.slice(0, Math.min(8, allUsers.length));
+    
+    for (let i = 0; i < usersWithCarts.length; i++) {
+      const user = usersWithCarts[i];
+      
+      // Skip if user already has an order (they might have checked out)
+      const hasOrder = await prisma.order.findFirst({ where: { userId: user.id } });
+      if (hasOrder && Math.random() > 0.3) continue; // 70% chance to skip users with orders
+      
+      // Create cart with 1-4 random products
+      const numItems = Math.floor(Math.random() * 4) + 1;
+      const selectedProducts = allProducts
+        .sort(() => Math.random() - 0.5)
+        .slice(0, numItems);
+      
+      if (selectedProducts.length > 0) {
+        // Create cart with updatedAt in the past (1-7 days ago) to simulate abandoned carts
+        const daysAgo = Math.floor(Math.random() * 7) + 1;
+        const abandonedDate = new Date();
+        abandonedDate.setDate(abandonedDate.getDate() - daysAgo);
+        
+        const cart = await prisma.cart.create({
+          data: {
+            userId: user.id,
+            updatedAt: abandonedDate,
+            items: {
+              create: selectedProducts.map(product => ({
+                productId: product.id,
+                quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
+              }))
+            }
+          }
+        });
+        
+        console.log(`Created abandoned cart for ${user.name} with ${selectedProducts.length} items`);
       }
     }
-  });
+  }
 
-  await prisma.order.create({
-    data: {
-      userId: user2.id,
-      totalAmount: createdProducts[1].price + createdProducts[2].price,
-      status: 'pending',
-      items: {
-        create: [
-          { productId: createdProducts[1].id, quantity: 1, price: createdProducts[1].price },
-          { productId: createdProducts[2].id, quantity: 1, price: createdProducts[2].price }
-        ]
-      }
-    }
-  });
-
-  console.log('Orders seeded.');
-  console.log('Database seeding completed successfully!');
+  console.log('Seed completed successfully!');
 }
 
 main()

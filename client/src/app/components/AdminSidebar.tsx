@@ -12,7 +12,8 @@ import {
     Home,
     X,
     Menu,
-    ShoppingCart
+    ShoppingCart,
+    Tag
 } from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { logout } from '../../redux/features/userSlice';
@@ -24,6 +25,7 @@ const menuItems = [
     { name: 'Products', href: '/admin/products', icon: ShoppingBag },
     { name: 'Orders', href: '/admin/orders', icon: ClipboardList },
     { name: 'Abandoned Carts', href: '/admin/abandoned-carts', icon: ShoppingCart },
+    { name: 'Offers', href: '/admin/offers', icon: Tag },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Reviews', href: '/admin/reviews', icon: MessageSquare },
 ];

@@ -5,9 +5,11 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useRouter } from 'next/navigation';
 import { Mail, ArrowLeft } from 'lucide-react';
+import { useToast } from '../../components/ToastContext';
 
 export default function ForgotPasswordPage() {
     const router = useRouter();
+    const { showToast } = useToast();
 
     const validationSchema = Yup.object({
         email: Yup.string().email('Invalid email address').required('Email is required'),
@@ -22,7 +24,7 @@ export default function ForgotPasswordPage() {
             console.log('Password Reset Request:', values);
             // Mock sending email
             setTimeout(() => {
-                alert('If an account exists with this email, a password reset link has been sent.');
+                showToast('If an account exists with this email, a password reset link has been sent.', 'info');
                 router.push('/login');
             }, 500);
         },

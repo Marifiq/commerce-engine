@@ -22,6 +22,8 @@ router.patch("/change-my-password", authController.changePassword);
 // 3) RESTRICTED ROUTES (Admins only)
 router.use(authController.restrictTo("admin"));
 
+router.get("/:id/details", userController.getUserDetails);
+
 router
   .route("/")
   .get(userController.getAllUsers)

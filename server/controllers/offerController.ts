@@ -1,0 +1,525 @@
+import { Request, Response, NextFunction } from "express";
+import prisma from "../db.js";
+import catchAsync from "../utils/catchAsync.js";
+import AppError from "../utils/appError.js";
+import { UserRequest } from "../types.js";
+
+// Get all offers (admin)
+export const getAllOffers = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const offers = await prisma.offer.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.status(200).json({
+      status: "success",
+      results: offers.length,
+      data: {
+        data: offers,
+      },
+    });
+  }
+);
+
+// Get active offers for banner (public) - only one global banner
+export const getActiveOffers = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const now = new Date();
+    // Get only the most recent active banner (only one global banner allowed)
+    const offer = await prisma.offer.findFirst({
+      where: {
+        isActive: true,
+        showBanner: true,
+        AND: [
+          {
+            OR: [
+              { startDate: null },
+              { startDate: { lte: now } },
+            ],
+          },
+          {
+            OR: [
+              { endDate: null },
+              { endDate: { gte: now } },
+            ],
+          },
+        ],
+      },
+      orderBy: {
+        updatedAt: "desc", // Get the most recently updated banner
+      },
+    });
+
+    res.status(200).json({
+      status: "success",
+      results: offer ? 1 : 0,
+      data: {
+        data: offer ? [offer] : [],
+      },
+    });
+  }
+);
+
+// Get single offer (admin)
+export const getOffer = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const id = parseInt(req.params.id);
+    const offer = await prisma.offer.findUnique({
+      where: { id },
+    });
+
+    if (!offer) {
+      return next(new AppError("Offer not found", 404));
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        data: offer,
+      },
+    });
+  }
+);
+
+// Create offer (admin)
+export const createOffer = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const {
+      title,
+      description,
+      discountPercent,
+      targetType,
+      targetId,
+      targetName,
+      startDate,
+      endDate,
+      isActive,
+      showBanner,
+    } = req.body;
+
+    if (!title || discountPercent === undefined) {
+      return next(new AppError("Title and discountPercent are required", 400));
+    }
+
+    if (discountPercent < 0 || discountPercent > 100) {
+      return next(
+        new AppError("discountPercent must be between 0 and 100", 400)
+      );
+    }
+
+    // Validate targetType
+    if (targetType && !["product", "category", "all"].includes(targetType)) {
+      return next(
+        new AppError('targetType must be "product", "category", or "all"', 400)
+      );
+    }
+
+    // If targetType is product or category, validate targetId
+    if (targetType !== "all" && !targetId) {
+      return next(
+        new AppError("targetId is required when targetType is not 'all'", 400)
+      );
+    }
+
+    // Validate dates
+    let parsedStartDate = null;
+    let parsedEndDate = null;
+
+    if (startDate) {
+      parsedStartDate = new Date(startDate);
+      if (isNaN(parsedStartDate.getTime())) {
+        return next(new AppError("Invalid startDate format", 400));
+      }
+    }
+
+    if (endDate) {
+      parsedEndDate = new Date(endDate);
+      if (isNaN(parsedEndDate.getTime())) {
+        return next(new AppError("Invalid endDate format", 400));
+      }
+    }
+
+    if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+      return next(new AppError("startDate must be before endDate", 400));
+    }
+
+    // If targetType is product, verify product exists
+    if (targetType === "product" && targetId) {
+      const product = await prisma.product.findUnique({
+        where: { id: targetId },
+      });
+      if (!product) {
+        return next(new AppError("Product not found", 404));
+      }
+      // Apply discount to product
+      await prisma.product.update({
+        where: { id: targetId },
+        data: { discountPercent },
+      });
+    }
+
+    // If targetType is category, verify category exists
+    if (targetType === "category" && targetId) {
+      const category = await prisma.category.findUnique({
+        where: { id: targetId },
+      });
+      if (!category) {
+        return next(new AppError("Category not found", 404));
+      }
+      // Apply discount to category
+      await prisma.category.update({
+        where: { id: targetId },
+        data: { discountPercent },
+      });
+      // Ensure targetName is set
+      if (!targetName) {
+        targetName = category.name;
+      }
+    }
+
+    // If showBanner is true, set all other offers' showBanner to false (only one global banner)
+    const finalShowBanner = showBanner !== undefined ? showBanner : false;
+    if (finalShowBanner) {
+      await prisma.offer.updateMany({
+        where: {
+          showBanner: true,
+        },
+        data: {
+          showBanner: false,
+        },
+      });
+    }
+
+    const offer = await prisma.offer.create({
+      data: {
+        title,
+        description,
+        discountPercent,
+        targetType: targetType || "all",
+        targetId: targetId || null,
+        targetName: targetName || null,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+        isActive: isActive !== undefined ? isActive : true,
+        showBanner: finalShowBanner,
+      },
+    });
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        data: offer,
+      },
+    });
+  }
+);
+
+// Update offer (admin)
+export const updateOffer = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const id = parseInt(req.params.id);
+    const {
+      title,
+      description,
+      discountPercent,
+      targetType,
+      targetId,
+      targetName,
+      startDate,
+      endDate,
+      isActive,
+      showBanner,
+    } = req.body;
+
+    const offer = await prisma.offer.findUnique({
+      where: { id },
+    });
+
+    if (!offer) {
+      return next(new AppError("Offer not found", 404));
+    }
+
+    // Validate discountPercent if provided
+    if (discountPercent !== undefined) {
+      if (discountPercent < 0 || discountPercent > 100) {
+        return next(
+          new AppError("discountPercent must be between 0 and 100", 400)
+        );
+      }
+    }
+
+    // Parse dates if provided
+    let parsedStartDate = offer.startDate;
+    let parsedEndDate = offer.endDate;
+
+    if (startDate !== undefined) {
+      if (startDate === null) {
+        parsedStartDate = null;
+      } else {
+        parsedStartDate = new Date(startDate);
+        if (isNaN(parsedStartDate.getTime())) {
+          return next(new AppError("Invalid startDate format", 400));
+        }
+      }
+    }
+
+    if (endDate !== undefined) {
+      if (endDate === null) {
+        parsedEndDate = null;
+      } else {
+        parsedEndDate = new Date(endDate);
+        if (isNaN(parsedEndDate.getTime())) {
+          return next(new AppError("Invalid endDate format", 400));
+        }
+      }
+    }
+
+    if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+      return next(new AppError("startDate must be before endDate", 400));
+    }
+
+    // Update product/category discount if target changed
+    const finalIsActive = isActive !== undefined ? isActive : offer.isActive;
+    const finalDiscountPercent =
+      discountPercent !== undefined ? discountPercent : offer.discountPercent;
+    const finalTargetType = targetType || offer.targetType;
+    const finalTargetId = targetId !== undefined ? targetId : offer.targetId;
+
+    // If offer is being deactivated, check for other active offers before removing discount
+    if (finalTargetType === "product" && finalTargetId) {
+      if (!finalIsActive) {
+        // Check if there are other active offers for this product
+        const now = new Date();
+        const otherActiveOffers = await prisma.offer.findMany({
+          where: {
+            id: { not: id },
+            isActive: true,
+            targetType: "product",
+            targetId: finalTargetId,
+            AND: [
+              {
+                OR: [
+                  { startDate: null },
+                  { startDate: { lte: now } },
+                ],
+              },
+              {
+                OR: [
+                  { endDate: null },
+                  { endDate: { gte: now } },
+                ],
+              },
+            ],
+          },
+        });
+        
+        // If no other active offers, remove discount; otherwise keep the highest
+        if (otherActiveOffers.length === 0) {
+          await prisma.product.update({
+            where: { id: finalTargetId },
+            data: { discountPercent: 0 },
+          });
+        } else {
+          const maxDiscount = Math.max(
+            ...otherActiveOffers.map((o) => o.discountPercent)
+          );
+          await prisma.product.update({
+            where: { id: finalTargetId },
+            data: { discountPercent: maxDiscount },
+          });
+        }
+      } else {
+        // Apply the discount (or keep the highest if multiple offers exist)
+        const now = new Date();
+        const allActiveOffers = await prisma.offer.findMany({
+          where: {
+            isActive: true,
+            targetType: "product",
+            targetId: finalTargetId,
+            AND: [
+              {
+                OR: [
+                  { startDate: null },
+                  { startDate: { lte: now } },
+                ],
+              },
+              {
+                OR: [
+                  { endDate: null },
+                  { endDate: { gte: now } },
+                ],
+              },
+            ],
+          },
+        });
+        
+        const maxDiscount = Math.max(
+          ...allActiveOffers.map((o) => o.discountPercent)
+        );
+        await prisma.product.update({
+          where: { id: finalTargetId },
+          data: { discountPercent: maxDiscount },
+        });
+      }
+    }
+
+    if (finalTargetType === "category" && finalTargetId) {
+      if (!finalIsActive) {
+        // Check if there are other active offers for this category
+        const now = new Date();
+        const otherActiveOffers = await prisma.offer.findMany({
+          where: {
+            id: { not: id },
+            isActive: true,
+            targetType: "category",
+            targetId: finalTargetId,
+            AND: [
+              {
+                OR: [
+                  { startDate: null },
+                  { startDate: { lte: now } },
+                ],
+              },
+              {
+                OR: [
+                  { endDate: null },
+                  { endDate: { gte: now } },
+                ],
+              },
+            ],
+          },
+        });
+        
+        // If no other active offers, remove discount; otherwise keep the highest
+        if (otherActiveOffers.length === 0) {
+          await prisma.category.update({
+            where: { id: finalTargetId },
+            data: { discountPercent: 0 },
+          });
+        } else {
+          const maxDiscount = Math.max(
+            ...otherActiveOffers.map((o) => o.discountPercent)
+          );
+          await prisma.category.update({
+            where: { id: finalTargetId },
+            data: { discountPercent: maxDiscount },
+          });
+        }
+      } else {
+        // Apply the discount (or keep the highest if multiple offers exist)
+        const now = new Date();
+        const allActiveOffers = await prisma.offer.findMany({
+          where: {
+            isActive: true,
+            targetType: "category",
+            targetId: finalTargetId,
+            AND: [
+              {
+                OR: [
+                  { startDate: null },
+                  { startDate: { lte: now } },
+                ],
+              },
+              {
+                OR: [
+                  { endDate: null },
+                  { endDate: { gte: now } },
+                ],
+              },
+            ],
+          },
+        });
+        
+        const maxDiscount = Math.max(
+          ...allActiveOffers.map((o) => o.discountPercent)
+        );
+        await prisma.category.update({
+          where: { id: finalTargetId },
+          data: { discountPercent: maxDiscount },
+        });
+      }
+    }
+
+    // If showBanner is being set to true, set all other offers' showBanner to false (only one global banner)
+    const finalShowBanner = showBanner !== undefined ? Boolean(showBanner) : offer.showBanner;
+    if (finalShowBanner && (!showBanner || showBanner !== offer.showBanner)) {
+      await prisma.offer.updateMany({
+        where: {
+          showBanner: true,
+          id: { not: id },
+        },
+        data: {
+          showBanner: false,
+        },
+      });
+    }
+
+    // Build update data object - explicitly handle boolean values
+    const updateData: any = {};
+    if (title) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (discountPercent !== undefined) updateData.discountPercent = discountPercent;
+    if (targetType) updateData.targetType = targetType;
+    if (targetId !== undefined) updateData.targetId = targetId;
+    if (targetName !== undefined) updateData.targetName = targetName;
+    if (startDate !== undefined) updateData.startDate = parsedStartDate;
+    if (endDate !== undefined) updateData.endDate = parsedEndDate;
+    // Explicitly handle boolean values - they can be false
+    if (isActive !== undefined) updateData.isActive = Boolean(isActive);
+    if (showBanner !== undefined) updateData.showBanner = Boolean(showBanner);
+
+    const updatedOffer = await prisma.offer.update({
+      where: { id },
+      data: updateData,
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        data: updatedOffer,
+      },
+    });
+  }
+);
+
+// Delete offer (admin)
+export const deleteOffer = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const id = parseInt(req.params.id);
+
+    const offer = await prisma.offer.findUnique({
+      where: { id },
+    });
+
+    if (!offer) {
+      return next(new AppError("Offer not found", 404));
+    }
+
+    // Remove discount from product/category if applicable
+    if (offer.targetType === "product" && offer.targetId) {
+      await prisma.product.update({
+        where: { id: offer.targetId },
+        data: { discountPercent: 0 },
+      });
+    }
+
+    if (offer.targetType === "category" && offer.targetId) {
+      await prisma.category.update({
+        where: { id: offer.targetId },
+        data: { discountPercent: 0 },
+      });
+    }
+
+    await prisma.offer.delete({
+      where: { id },
+    });
+
+    res.status(204).json({
+      status: "success",
+      data: null,
+    });
+  }
+);
+

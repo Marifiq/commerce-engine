@@ -11,21 +11,30 @@ interface ReviewModalProps {
     onSubmit: (reviewData: any) => Promise<void>;
     productName: string;
     productImage: string;
+    existingReview?: {
+        id: number;
+        rating: number;
+        text: string;
+        images?: string[];
+        videos?: string[];
+    } | null;
 }
 
-export default function ReviewModal({ isOpen, onClose, onSubmit, productName, productImage }: ReviewModalProps) {
+export default function ReviewModal({ isOpen, onClose, onSubmit, productName, productImage, existingReview }: ReviewModalProps) {
     const [loading, setLoading] = useState(false);
     const [mediaError, setMediaError] = useState('');
     const imageInputRef = useRef<HTMLInputElement>(null);
     const videoInputRef = useRef<HTMLInputElement>(null);
+    const isEditing = !!existingReview;
 
     const formik = useFormik({
         initialValues: {
-            rating: 5,
-            text: '',
-            images: [] as string[],
-            videos: [] as string[],
+            rating: existingReview?.rating || 5,
+            text: existingReview?.text || '',
+            images: existingReview?.images || [] as string[],
+            videos: existingReview?.videos || [] as string[],
         },
+        enableReinitialize: true,
         validationSchema: Yup.object({
             rating: Yup.number().required('Rating is required').min(1, 'Please select a rating'),
             text: Yup.string().required('Review text is required').min(10, 'Review must be at least 10 characters'),
@@ -111,7 +120,7 @@ export default function ReviewModal({ isOpen, onClose, onSubmit, productName, pr
             <div className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-zinc-100 dark:border-zinc-800">
-                    <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Write a Review</h3>
+                    <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{isEditing ? 'Edit Review' : 'Write a Review'}</h3>
                     <button onClick={onClose} className="p-2 text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer">
                         <X className="h-5 w-5" />
                     </button>
@@ -229,7 +238,7 @@ export default function ReviewModal({ isOpen, onClose, onSubmit, productName, pr
                             disabled={loading}
                             className={`w-full py-3 rounded-xl bg-black text-white font-medium hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 transition-all ${loading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
                         >
-                            {loading ? 'Submitting...' : 'Submit Review'}
+                            {loading ? (isEditing ? 'Updating...' : 'Submitting...') : (isEditing ? 'Update Review' : 'Submit Review')}
                         </button>
                     </form>
                 </div>

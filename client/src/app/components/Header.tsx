@@ -9,6 +9,7 @@ import { logout } from '../../redux/features/userSlice';
 import { useRouter } from 'next/navigation';
 import { RootState } from '../../redux/store';
 import { apiFetch } from '../../utils/api';
+import { Offer } from '../../types';
 
 export default function Header() {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -52,12 +53,40 @@ export default function Header() {
         router.push('/');
     };
 
+    const handleSectionClick = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
+        e.preventDefault();
+        const currentPath = window.location.pathname;
+        
+        if (currentPath === '/') {
+            // If on home page, scroll to section
+            const element = document.getElementById(sectionId);
+            if (element) {
+                const headerHeight = 80; // Height of fixed header
+                const elementPosition = element.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        } else {
+            // If not on home page, navigate to home with anchor
+            // The home page useEffect will handle the scrolling
+            router.push(`/#${sectionId}`);
+        }
+        
+        // Close mobile menu if open
+        setIsMobileMenuOpen(false);
+    };
+
     return (
         <header
             className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
                 ? 'bg-white/80 backdrop-blur-md shadow-sm dark:bg-black/80'
                 : 'bg-transparent'
                 }`}
+            id="main-header"
         >
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex h-20 items-center justify-between">
@@ -74,17 +103,29 @@ export default function Header() {
                             href="/shop"
                             className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
                         >
-                            Shop All
+                            Category
                         </Link>
-                        {categories.map((item) => (
-                            <Link
-                                key={item}
-                                href={`/shop?category=${encodeURIComponent(item)}`}
-                                className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
-                            >
-                                {item}
-                            </Link>
-                        ))}
+                        <a
+                            href="#off"
+                            onClick={(e) => handleSectionClick(e, 'off')}
+                            className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white cursor-pointer"
+                        >
+                            Off
+                        </a>
+                        <a
+                            href="#new-arrivals"
+                            onClick={(e) => handleSectionClick(e, 'new-arrivals')}
+                            className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white cursor-pointer"
+                        >
+                            New Arrivals
+                        </a>
+                        <a
+                            href="#best-sellers"
+                            onClick={(e) => handleSectionClick(e, 'best-sellers')}
+                            className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white cursor-pointer"
+                        >
+                            Best Sellers
+                        </a>
                     </nav>
 
 
@@ -116,7 +157,7 @@ export default function Header() {
                                 </Link>
                                 <button
                                     onClick={handleLogout}
-                                    className="text-zinc-700 transition-all hover:text-red-600 hover:scale-110 cursor-pointer dark:text-zinc-300 dark:hover:text-red-400"
+                                    className="text-zinc-700 transition-all hover:text-black hover:scale-110 cursor-pointer dark:text-zinc-300 dark:hover:text-white"
                                     title="Logout"
                                 >
                                     <LogOut className="h-5 w-5" />
@@ -171,18 +212,29 @@ export default function Header() {
                                     className="text-xl font-black uppercase tracking-tighter text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
-                                    Shop All
+                                    Category
                                 </Link>
-                                {categories.map((item) => (
-                                    <Link
-                                        key={item}
-                                        href={`/shop?category=${encodeURIComponent(item)}`}
-                                        className="text-xl font-black uppercase tracking-tighter text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white"
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                    >
-                                        {item}
-                                    </Link>
-                                ))}
+                                <a
+                                    href="#off"
+                                    onClick={(e) => handleSectionClick(e, 'off')}
+                                    className="text-xl font-black uppercase tracking-tighter text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white cursor-pointer"
+                                >
+                                    Off
+                                </a>
+                                <a
+                                    href="#new-arrivals"
+                                    onClick={(e) => handleSectionClick(e, 'new-arrivals')}
+                                    className="text-xl font-black uppercase tracking-tighter text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white cursor-pointer"
+                                >
+                                    New Arrivals
+                                </a>
+                                <a
+                                    href="#best-sellers"
+                                    onClick={(e) => handleSectionClick(e, 'best-sellers')}
+                                    className="text-xl font-black uppercase tracking-tighter text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white cursor-pointer"
+                                >
+                                    Best Sellers
+                                </a>
                                 <div className="flex items-center space-x-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                                     <button className="flex items-center space-x-2 text-zinc-700 dark:text-zinc-300 font-bold uppercase tracking-widest text-xs">
                                         <Search className="h-5 w-5" />
@@ -196,7 +248,7 @@ export default function Header() {
                                                 handleLogout();
                                                 setIsMobileMenuOpen(false);
                                             }}
-                                            className="flex items-center space-x-2 text-red-600 dark:text-red-400 w-full font-bold uppercase tracking-widest text-xs"
+                                            className="flex items-center space-x-2 text-black dark:text-white w-full font-bold uppercase tracking-widest text-xs"
                                         >
                                             <LogOut className="h-5 w-5" />
                                             <span>Logout</span>

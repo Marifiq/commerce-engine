@@ -56,8 +56,8 @@ export default function AbandonedCartsPage() {
     const fetchCarts = async () => {
         setLoading(true);
         try {
-            const data = await apiFetch('/admin/carts');
-            setCarts(data);
+            const res = await apiFetch('/admin/carts');
+            setCarts(res.data.carts);
         } catch (error) {
             console.error('Error fetching carts:', error);
             showToast('Failed to fetch abandoned carts', 'error');
@@ -114,6 +114,7 @@ export default function AbandonedCartsPage() {
         setCurrentPage(1);
     }, [searchTerm, sortBy]);
 
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -134,31 +135,33 @@ export default function AbandonedCartsPage() {
                     <p className="text-zinc-500 font-medium font-sans">Monitor active carts that haven't checkout yet</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4 items-center">
-                    <div className="relative group w-full sm:w-80">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-black dark:group-focus-within:text-white transition-colors" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search by name or email..."
-                            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent outline-none transition-all font-medium"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                {!selectedCart && (
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="relative group w-full sm:w-80">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-black dark:group-focus-within:text-white transition-colors" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search by name or email..."
+                                className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent outline-none transition-all font-medium"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
 
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="w-full sm:w-auto px-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent outline-none transition-all font-bold cursor-pointer"
-                    >
-                        <option value="name-asc">Name (A-Z)</option>
-                        <option value="name-desc">Name (Z-A)</option>
-                        <option value="total-high">Value (High-Low)</option>
-                        <option value="total-low">Value (Low-High)</option>
-                        <option value="items-high">Items (Most)</option>
-                        <option value="items-low">Items (Least)</option>
-                    </select>
-                </div>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="w-full sm:w-auto px-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent outline-none transition-all font-bold cursor-pointer"
+                        >
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                            <option value="total-high">Value (High-Low)</option>
+                            <option value="total-low">Value (Low-High)</option>
+                            <option value="items-high">Items (Most)</option>
+                            <option value="items-low">Items (Least)</option>
+                        </select>
+                    </div>
+                )}
             </div>
 
             {selectedCart ? (
@@ -205,7 +208,7 @@ export default function AbandonedCartsPage() {
                                 </div>
                                 <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 relative z-10">
                                     <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Cart Status</p>
-                                    <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full text-xs font-black uppercase tracking-wider">
+                                    <span className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white rounded-full text-xs font-black uppercase tracking-wider">
                                         In Progress
                                     </span>
                                 </div>

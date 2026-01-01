@@ -60,6 +60,53 @@ export const deleteMe = catchAsync(async (req: UserRequest, res: Response, next:
   });
 });
 
+export const getUserDetails = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
+  const userId = parseInt(req.params.id);
+
+  if (isNaN(userId)) {
+    return next(new AppError("Invalid user ID", 400));
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      orders: {
+        include: { items: { include: { product: true } } },
+        orderBy: { createdAt: 'desc' }
+      },
+      cart: {
+        include: { items: { include: { product: true } } }
+      },
+      reviews: {
+        include: { product: true },
+        orderBy: { createdAt: 'desc' }
+      }
+    }
+  });
+
+  if (!user) {
+    return next(new AppError("User not found", 404));
+  }
+
+  const metrics = {
+    totalOrders: user.orders.length,
+    totalSpent: user.orders.reduce((sum, o) => sum + o.totalAmount, 0),
+    activeCartItems: user.cart?.items.length || 0,
+    totalReviews: user.reviews.length
+  };
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      user,
+      orders: user.orders,
+      cart: user.cart,
+      reviews: user.reviews,
+      metrics
+    }
+  });
+});
+
 export const getAllUsers = factory.getAll(prisma.user);
 export const getUser = factory.getOne(prisma.user);
 export const createUser = factory.createOne(prisma.user);

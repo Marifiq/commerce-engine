@@ -40,3 +40,9 @@ add limit
 add my orders in responsive
 add themes
 best seelers also show ratings and reviews on click go to that product click 
+
+
+small medium large sizes 
+flat offs 
+archive 
+separate all the data of frontedn so uuser can separate it 

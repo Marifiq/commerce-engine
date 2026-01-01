@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     X,
     User,
@@ -39,6 +40,7 @@ const statusColors: Record<string, string> = {
 };
 
 export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart, onRemoveFromCart, onCreateOrder, onRefresh }: UserDetailsDrawerProps) {
+    const router = useRouter();
     const [showAddToCart, setShowAddToCart] = useState(false);
     const [showCreateOrder, setShowCreateOrder] = useState(false);
     const [removingItemId, setRemovingItemId] = useState<number | null>(null);
@@ -123,16 +125,23 @@ export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart,
                             </div>
                             <div className="space-y-3">
                                 {data.orders.length > 0 ? data.orders.map((order: any) => (
-                                    <div key={order.id} className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between group hover:border-black dark:hover:border-white transition-all">
-                                        <div>
-                                            <p className="font-bold text-zinc-900 dark:text-white text-sm">Order #{order.id.toString().slice(-6)}</p>
-                                            <p className="text-[10px] text-zinc-500">{new Date(order.createdAt).toLocaleDateString()}</p>
+                                    <div 
+                                        key={order.id} 
+                                        onClick={() => router.push(`/admin/orders?id=${order.id}`)}
+                                        className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between group hover:border-black dark:hover:border-white transition-all cursor-pointer"
+                                    >
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <div>
+                                                <p className="font-bold text-zinc-900 dark:text-white text-sm">Order #{order.id.toString().slice(-6)}</p>
+                                                <p className="text-[10px] text-zinc-500">{new Date(order.createdAt).toLocaleDateString()}</p>
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-4">
-                                            <p className="font-black text-zinc-900 dark:text-white text-sm">${order.total}</p>
+                                            <p className="font-black text-zinc-900 dark:text-white text-sm">${order.totalAmount || order.total || 0}</p>
                                             <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${statusColors[order.status.toLowerCase()]}`}>
                                                 {order.status}
                                             </span>
+                                            <ExternalLink size={14} className="text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" />
                                         </div>
                                     </div>
                                 )) : (
@@ -148,7 +157,7 @@ export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart,
                             <div className="flex items-center gap-2 mb-4">
                                 <ShoppingCart size={18} className="text-zinc-400" />
                                 <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white">Current Cart</h4>
-                                {data.cart.items.length > 0 && (
+                                {data.cart?.items && data.cart.items.length > 0 && (
                                     <span className="ml-auto px-2 py-0.5 rounded-full bg-black dark:bg-white text-white dark:text-black text-[10px] font-black">
                                         {data.cart.items.length} ITEMS
                                     </span>
@@ -166,7 +175,7 @@ export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart,
                                         Add Product
                                     </button>
                                 )}
-                                {onCreateOrder && data.cart.items.length > 0 && (
+                                {onCreateOrder && data.cart?.items && data.cart.items.length > 0 && (
                                     <button
                                         onClick={() => setShowCreateOrder(true)}
                                         className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-800 dark:bg-zinc-200 text-white dark:text-black font-black uppercase tracking-widest text-[10px] hover:opacity-90 transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -178,7 +187,7 @@ export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart,
                             </div>
 
                             <div className="space-y-3">
-                                {data.cart.items.length > 0 ? data.cart.items.map((item: any) => (
+                                {data.cart?.items && data.cart.items.length > 0 ? data.cart.items.map((item: any) => (
                                     <div key={item.id} className="flex items-center gap-4 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 group">
                                         <div className="h-12 w-12 rounded-xl overflow-hidden bg-white dark:bg-zinc-800">
                                             <img src={item.product?.image} className="h-full w-full object-cover" alt="" />
@@ -262,7 +271,7 @@ export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart,
                         onClose={() => setShowCreateOrder(false)}
                         onCreate={onCreateOrder}
                         cartTotal={cartTotal}
-                        itemCount={data.cart.items.length}
+                        itemCount={data.cart?.items?.length || 0}
                     />
                 )}
             </div>

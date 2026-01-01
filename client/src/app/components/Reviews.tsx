@@ -1,18 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Star, CheckCircle2, Play, Image as ImageIcon, ChevronRight } from 'lucide-react';
 import { reviewService } from '../../services/reviewService';
 import { Review } from '../../types';
 import MediaViewer from './MediaViewer';
+import ReviewsCarouselModal from './ReviewsCarouselModal';
 import { formatDate } from '../../utils/dateUtils';
 
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
+
 const AVATAR_COLORS = [
-    'from-pink-500 to-rose-500',
-    'from-purple-500 to-indigo-500',
-    'from-blue-500 to-cyan-500',
-    'from-teal-500 to-emerald-500',
-    'from-orange-500 to-amber-500',
+    'from-zinc-800 to-zinc-900',
+    'from-zinc-700 to-zinc-800',
+    'from-zinc-600 to-zinc-700',
+    'from-zinc-500 to-zinc-600',
+    'from-zinc-900 to-black',
 ];
 
 function getInitials(name: string) {
@@ -31,7 +38,7 @@ function StarRating({ rating }: { rating: number }) {
                 <Star
                     key={i}
                     size={14}
-                    className={`${i < rating ? 'fill-black text-black dark:fill-white dark:text-white' : 'text-zinc-200 dark:text-zinc-800'}`}
+                    className={`${i < rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-200 dark:text-zinc-700'}`}
                 />
             ))}
         </div>
@@ -41,18 +48,24 @@ function StarRating({ rating }: { rating: number }) {
 export default function Reviews() {
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isCarouselModalOpen, setIsCarouselModalOpen] = useState(false);
     const [viewerState, setViewerState] = useState<{ isOpen: boolean; media: string; type: 'image' | 'video' }>({
         isOpen: false,
         media: '',
         type: 'image'
     });
+    const sectionRef = useRef<HTMLElement>(null);
+    const headerRef = useRef<HTMLDivElement>(null);
+    const gridRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLDivElement>(null);
+    const transitionLineRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchReviews = async () => {
             try {
-                const data = await reviewService.getAllReviews();
-                // Filter only approved reviews for homepage
-                setReviews(data.filter(r => r.isApproved).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+                // Use homepage endpoint which returns only approved reviews with rating > 4, max 5
+                const data = await reviewService.getHomepageReviews();
+                setReviews(data);
             } catch (error) {
                 console.error("Failed to fetch reviews:", error);
             } finally {
@@ -62,6 +75,139 @@ export default function Reviews() {
         fetchReviews();
     }, []);
 
+    useEffect(() => {
+        if (!loading && reviews.length > 0 && sectionRef.current) {
+            const ctx = gsap.context(() => {
+                // Create a smooth entrance animation sequence
+                const tl = gsap.timeline({
+                    scrollTrigger: {
+                        trigger: sectionRef.current,
+                        start: 'top 90%', // Trigger slightly earlier for smoother transition from BestSellers
+                        end: 'top 40%',
+                        toggleActions: 'play none none reverse',
+                        markers: false
+                    }
+                });
+
+                // Animate header with smooth fade and slide
+                if (headerRef.current) {
+                    tl.fromTo(
+                        headerRef.current,
+                        {
+                            y: 80,
+                            opacity: 0,
+                            scale: 0.95
+                        },
+                        {
+                            y: 0,
+                            opacity: 1,
+                            scale: 1,
+                            duration: 1.2,
+                            ease: 'power3.out'
+                        },
+                        0 // Start immediately
+                    );
+                }
+
+                // Animate reviews grid with enhanced stagger and scale
+                if (gridRef.current) {
+                    const reviewCards = Array.from(gridRef.current.children);
+                    tl.fromTo(
+                        reviewCards,
+                        {
+                            y: 60,
+                            opacity: 0,
+                            scale: 0.9,
+                            rotationX: 15
+                        },
+                        {
+                            y: 0,
+                            opacity: 1,
+                            scale: 1,
+                            rotationX: 0,
+                            duration: 0.9,
+                            stagger: {
+                                amount: 0.6, // Total stagger duration
+                                from: 'start',
+                                ease: 'power2.out'
+                            },
+                            ease: 'back.out(1.2)',
+                        },
+                        0.3 // Start after header begins
+                    );
+
+                    // Add subtle hover effect animation on cards
+                    reviewCards.forEach((card, index) => {
+                        gsap.set(card, { transformOrigin: 'center center' });
+                        const cardElement = card as HTMLElement;
+                        
+                        cardElement.addEventListener('mouseenter', () => {
+                            gsap.to(card, {
+                                scale: 1.02,
+                                y: -8,
+                                duration: 0.4,
+                                ease: 'power2.out'
+                            });
+                        });
+                        
+                        cardElement.addEventListener('mouseleave', () => {
+                            gsap.to(card, {
+                                scale: 1,
+                                y: 0,
+                                duration: 0.4,
+                                ease: 'power2.out'
+                            });
+                        });
+                    });
+                }
+
+                // Animate button with fade and slide
+                if (buttonRef.current) {
+                    tl.fromTo(
+                        buttonRef.current,
+                        {
+                            y: 40,
+                            opacity: 0,
+                            scale: 0.9
+                        },
+                        {
+                            y: 0,
+                            opacity: 1,
+                            scale: 1,
+                            duration: 0.8,
+                            ease: 'back.out(1.4)',
+                        },
+                        0.9 // Start after grid animation
+                    );
+                }
+
+                // Animate the transition line from BestSellers section
+                if (transitionLineRef.current) {
+                    tl.fromTo(
+                        transitionLineRef.current,
+                        {
+                            scaleX: 0,
+                            opacity: 0,
+                        },
+                        {
+                            scaleX: 1,
+                            opacity: 1,
+                            duration: 1.2,
+                            ease: 'power2.out',
+                            transformOrigin: 'left center',
+                        },
+                        0
+                    );
+                }
+
+            });
+
+            return () => {
+                ctx.revert();
+            };
+        }
+    }, [loading, reviews.length]);
+
     const handleMediaClick = (media: string) => {
         const type = (media.startsWith('data:video/') || media.toLowerCase().endsWith('.mp4')) ? 'video' : 'image';
         setViewerState({ isOpen: true, media, type: type as 'image' | 'video' });
@@ -70,13 +216,18 @@ export default function Reviews() {
     if (loading || reviews.length === 0) return null;
 
     return (
-        <section className="bg-white py-24 sm:py-32 dark:bg-black overflow-hidden">
+        <section ref={sectionRef} className="bg-white py-24 sm:py-32 dark:bg-black overflow-hidden relative">
+            {/* Decorative transition element from BestSellers */}
+            <div 
+                ref={transitionLineRef}
+                className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-200 dark:via-zinc-800 to-transparent"
+            />
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
                 {/* Section Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+                <div ref={headerRef} className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
                     <div className="max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 mb-6">
-                            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                            <span className="flex h-2 w-2 rounded-full bg-black dark:bg-white animate-pulse" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
                                 Real customer feedback
                             </span>
@@ -91,7 +242,7 @@ export default function Reviews() {
                 </div>
 
                 {/* Reviews Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {reviews.map((review, idx) => {
                         const userName = (typeof review.user === 'object' ? review.user?.name : review.user) || "Anonymous User";
                         const userRole = (typeof review.user === 'object' ? review.user?.role : "Gentleman") || "Verified Buyer";
@@ -114,7 +265,7 @@ export default function Reviews() {
                                                     <p className="font-black text-black dark:text-white text-sm uppercase tracking-tight">
                                                         {userName}
                                                     </p>
-                                                    <CheckCircle2 size={14} className="text-blue-500" fill="currentColor" fillOpacity={0.1} />
+                                                    <CheckCircle2 size={14} className="text-black dark:text-white" fill="currentColor" fillOpacity={0.1} />
                                                 </div>
                                                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
                                                     {userRole}
@@ -174,12 +325,20 @@ export default function Reviews() {
                     })}
                 </div>
 
-                <div className="mt-20 text-center">
-                    <button className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.3em] text-black dark:text-white border-b-2 border-black dark:border-white pb-2 hover:gap-4 transition-all">
+                <div ref={buttonRef} className="mt-20 text-center">
+                    <button 
+                        onClick={() => setIsCarouselModalOpen(true)}
+                        className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.3em] text-black dark:text-white border-b-2 border-black dark:border-white pb-2 hover:gap-4 transition-all cursor-pointer"
+                    >
                         View All Stories <ChevronRight size={14} />
                     </button>
                 </div>
             </div>
+
+            <ReviewsCarouselModal 
+                isOpen={isCarouselModalOpen}
+                onClose={() => setIsCarouselModalOpen(false)}
+            />
 
             <MediaViewer
                 isOpen={viewerState.isOpen}

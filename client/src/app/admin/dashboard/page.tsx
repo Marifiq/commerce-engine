@@ -121,7 +121,7 @@ export default function DashboardPage() {
                                         <div className="font-medium text-zinc-900 dark:text-white">Order #{order.id.toString().slice(-6)}</div>
                                         <div className="text-sm text-zinc-500">{order.status} • {new Date(order.createdAt).toLocaleDateString()}</div>
                                     </div>
-                                    <div className="font-bold text-zinc-900 dark:text-white">${order.total}</div>
+                                    <div className="font-bold text-zinc-900 dark:text-white">${(order.total || order.totalAmount || 0).toFixed(2)}</div>
                                 </div>
                             </Link>
                         )) : (

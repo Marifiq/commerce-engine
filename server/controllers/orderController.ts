@@ -31,6 +31,9 @@ export const checkout = catchAsync(async (req: UserRequest, res: Response, next:
     totalAmount += item.product.price * item.quantity;
   }
 
+  // 3. Get shipping address and payment method from request body
+  const { shippingAddress, paymentMethod } = req.body;
+
   // 3. Create order and order items (using transaction)
   const order = await prisma.$transaction(async (tx) => {
     // Create the order
@@ -39,6 +42,8 @@ export const checkout = catchAsync(async (req: UserRequest, res: Response, next:
         userId: req.user!.id!,
         totalAmount,
         status: "pending",
+        shippingAddress: shippingAddress || null,
+        paymentMethod: paymentMethod || null,
         items: {
           create: cart.items.map((item) => ({
             productId: item.productId,

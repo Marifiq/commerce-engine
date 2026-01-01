@@ -11,7 +11,6 @@ import {
     Loader2,
     Mail,
     User,
-    Eye,
     Edit2,
     Trash2
 } from 'lucide-react';
@@ -351,7 +350,11 @@ export default function UsersPage() {
                                     </td>
                                 </tr>
                             ) : paginatedUsers.length > 0 ? paginatedUsers.map((item) => (
-                                <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer">
+                                <tr 
+                                    key={item.id} 
+                                    onClick={() => handleViewProfile(item.id)}
+                                    className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                                >
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
                                             <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-400">
@@ -377,15 +380,8 @@ export default function UsersPage() {
                                             {item.role.toUpperCase()}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right min-w-[280px]">
+                                    <td className="px-6 py-4 text-right min-w-[280px]" onClick={(e) => e.stopPropagation()}>
                                         <div className="flex items-center justify-end gap-2">
-                                            <button
-                                                onClick={() => handleViewProfile(item.id)}
-                                                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                                title="View Profile"
-                                            >
-                                                <Eye size={14} />
-                                            </button>
                                             <button
                                                 onClick={() => handleEditClick(item)}
                                                 className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
