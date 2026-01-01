@@ -13,6 +13,14 @@ export const productService = {
   },
 
   /**
+   * Fetch best-selling products calculated from orders
+   */
+  async getBestSellers() {
+    const data = await apiFetch(`/products/best-sellers`);
+    return data.data.data as Product[];
+  },
+
+  /**
    * Fetch a single product by ID
    */
   async getProduct(id: number | string) {
@@ -25,7 +33,7 @@ export const productService = {
    */
   async createProduct(formData: FormData) {
     const token = localStorage.getItem("token");
-    
+
     // Use the same logic as apiFetch to ensure versioned path
     let baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
     if (!baseUrl.includes('/api/v1')) baseUrl = `${baseUrl}/api/v1`;

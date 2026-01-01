@@ -29,6 +29,7 @@ export interface Product {
     section?: string;
     stock: number;
     rating?: number;
+    color?: string;
     createdAt: string;
 }
 
@@ -72,10 +73,13 @@ export interface Review {
     id: number;
     text: string;
     rating: number;
+    images?: string[];
+    videos?: string[];
     productId: number;
     userId: number;
+    isApproved: boolean;
     createdAt: string;
-    user?: {
+    user?: string | {
         name: string;
         role?: string;
     };
@@ -98,7 +102,7 @@ export interface Order {
     id: number;
     userId: number;
     items: OrderItem[];
-    totalAmount: number;
+    total: number;
     status: string;
     createdAt: string;
 }

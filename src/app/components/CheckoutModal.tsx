@@ -77,13 +77,13 @@ export default function CheckoutModal() {
                     shippingAddress: `${values.address}, ${values.city}, ${values.zip}`,
                     paymentMethod: values.paymentMethod,
                 };
-                
+
                 const order = await orderService.createOrder(orderData);
-                
+
                 const receipt: OrderReceipt = {
                     customer: values,
                     items: [...items],
-                    total: order.totalAmount,
+                    total: order.total,
                     trackingId: `ORD-${order.id}`,
                     date: order.createdAt,
                 };

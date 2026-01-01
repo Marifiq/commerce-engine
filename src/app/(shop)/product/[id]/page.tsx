@@ -1,6 +1,8 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { ShoppingBag, ArrowLeft, Star, Shield, Truck, RefreshCcw } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Star, Shield, Truck, RefreshCcw, Film, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useDispatch } from 'react-redux';
 import { addItemToCart } from '../../../../redux/features/cartSlice';
@@ -9,38 +11,55 @@ import { reviewService } from '../../../../services/reviewService';
 import { Product, Review } from '../../../../types';
 import { AppDispatch } from '../../../../redux/store';
 import { resolveImageUrl } from '../../../../utils/imageUtils';
+import LoadingSpinner from '../../../components/ui/LoadingSpinner';
+import MediaViewer from '../../../components/MediaViewer';
 
 export default function ProductPage() {
     const params = useParams();
     const id = params.id as string;
     const dispatch = useDispatch<AppDispatch>();
-    
+
     const [product, setProduct] = useState<Product | null>(null);
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [viewerState, setViewerState] = useState<{ isOpen: boolean; media: string; type: 'image' | 'video' }>({
+        isOpen: false,
+        media: '',
+        type: 'image'
+    });
+
+    const fetchProductData = async () => {
+        try {
+            const [productData, reviewsData] = await Promise.all([
+                productService.getProduct(id),
+                reviewService.getProductReviews(id)
+            ]);
+            setProduct(productData);
+            setReviews(reviewsData);
+        } catch (err: any) {
+            setError(err.message || 'Product not found');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchReviews = async () => {
+        try {
+            const reviewsData = await reviewService.getProductReviews(id);
+            setReviews(reviewsData);
+        } catch (err) {
+            console.error('Failed to refetch reviews', err);
+        }
+    };
 
     useEffect(() => {
-        const fetchProductData = async () => {
-            try {
-                const [productData, reviewsData] = await Promise.all([
-                    productService.getProduct(id),
-                    reviewService.getProductReviews(id)
-                ]);
-                setProduct(productData);
-                setReviews(reviewsData);
-            } catch (err: any) {
-                setError(err.message || 'Product not found');
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchProductData();
     }, [id]);
 
     if (loading) return (
         <div className="min-h-screen bg-white flex items-center justify-center dark:bg-black">
-            <p className="text-zinc-500">Loading product details...</p>
+            <LoadingSpinner size="large" />
         </div>
     );
 
@@ -53,6 +72,15 @@ export default function ProductPage() {
 
     const handleAddToCart = () => {
         dispatch(addItemToCart({ productId: Number(id), quantity: 1 }));
+    };
+
+    const handleMediaClick = (media: string) => {
+        const type = (media.startsWith('data:video/') || media.toLowerCase().endsWith('.mp4')) ? 'video' : 'image';
+        setViewerState({
+            isOpen: true,
+            media,
+            type: type as 'image' | 'video'
+        });
     };
 
     const imageUrl = resolveImageUrl(product.image);
@@ -97,9 +125,8 @@ export default function ProductPage() {
                                 {[0, 1, 2, 3, 4].map((rating) => (
                                     <Star
                                         key={rating}
-                                        className={`${
-                                            (product.rating || 4.5) > rating ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-300 dark:text-zinc-700'
-                                        } h-4 w-4 shrink-0`}
+                                        className={`${(product.rating || 4.5) > rating ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-300 dark:text-zinc-700'
+                                            } h-4 w-4 shrink-0`}
                                     />
                                 ))}
                             </div>
@@ -109,7 +136,7 @@ export default function ProductPage() {
                         <div className="mt-10">
                             <button
                                 onClick={handleAddToCart}
-                                className="flex w-full items-center justify-center rounded-xl bg-black px-8 py-4 text-base font-medium text-white hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 dark:bg-white dark:text-black dark:hover:bg-zinc-200 transition-all transform active:scale-95"
+                                className="flex w-full items-center justify-center rounded-xl bg-black px-8 py-4 text-base font-medium text-white hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 dark:bg-white dark:text-black dark:hover:bg-zinc-200 transition-all transform active:scale-95 cursor-pointer"
                             >
                                 <ShoppingBag className="mr-3 h-5 w-5" />
                                 Add to Cart
@@ -136,7 +163,23 @@ export default function ProductPage() {
 
                 {/* Reviews Section */}
                 <div className="mt-16 border-t border-zinc-100 dark:border-zinc-800 pt-16">
-                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-8">Customer Reviews</h2>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                        <div>
+                            <h2 className="text-3xl font-bold text-zinc-900 dark:text-white">Customer Reviews</h2>
+                            <div className="flex items-center mt-2 text-sm text-zinc-500">
+                                <div className="flex items-center mr-2">
+                                    {[0, 1, 2, 3, 4].map((star) => (
+                                        <Star
+                                            key={star}
+                                            className={`h-4 w-4 ${(product.rating || 0) > star ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-300'}`}
+                                        />
+                                    ))}
+                                </div>
+                                <span>Based on {reviews.length} reviews</span>
+                            </div>
+                        </div>
+                    </div>
+
                     {reviews.length === 0 ? (
                         <p className="text-zinc-500">No reviews yet for this product. Be the first to share your thoughts!</p>
                     ) : (
@@ -152,16 +195,53 @@ export default function ProductPage() {
                                                 />
                                             ))}
                                         </div>
-                                        <span className="text-sm font-semibold text-zinc-900 dark:text-white">{review.user?.name || 'Verified Buyer'}</span>
+                                        <span className="text-sm font-semibold text-zinc-900 dark:text-white">{(typeof review.user === 'object' && review.user?.name) || 'Verified Buyer'}</span>
                                         <span className="text-xs text-zinc-500">{new Date(review.createdAt).toLocaleDateString()}</span>
                                     </div>
-                                    <p className="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed italic">"{review.text}"</p>
+                                    <p className="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed italic mb-4">"{review.text}"</p>
+
+                                    {/* Media Display */}
+                                    {(review.images?.length || 0) + (review.videos?.length || 0) > 0 && (
+                                        <div className="flex flex-wrap gap-3">
+                                            {review.images?.map((img, idx) => (
+                                                <button
+                                                    key={`img-${idx}`}
+                                                    onClick={() => handleMediaClick(img)}
+                                                    className="relative h-16 w-16 rounded-xl border border-zinc-100 dark:border-zinc-800 overflow-hidden group cursor-pointer hover:border-black dark:hover:border-white transition-all shadow-sm focus:outline-none"
+                                                >
+                                                    <img src={img} alt="review" className="h-full w-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-all">
+                                                        <ExternalLink size={14} className="text-white opacity-0 group-hover:opacity-100" />
+                                                    </div>
+                                                </button>
+                                            ))}
+                                            {review.videos?.map((vid, idx) => (
+                                                <button
+                                                    key={`vid-${idx}`}
+                                                    onClick={() => handleMediaClick(vid)}
+                                                    className="relative h-16 w-16 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center group cursor-pointer hover:border-black dark:hover:border-white transition-all shadow-sm focus:outline-none"
+                                                >
+                                                    <Film size={20} className="text-zinc-400 group-hover:text-black dark:group-hover:text-white" />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-all">
+                                                        <ExternalLink size={14} className="text-white opacity-0 group-hover:opacity-100" />
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
             </div>
+
+            <MediaViewer
+                isOpen={viewerState.isOpen}
+                onClose={() => setViewerState(prev => ({ ...prev, isOpen: false }))}
+                media={viewerState.media}
+                mediaType={viewerState.type}
+            />
         </div>
     );
 }

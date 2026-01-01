@@ -2,31 +2,54 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, ShoppingBag, User, Search } from 'lucide-react';
+import { Menu, X, ShoppingBag, User, Search, LayoutDashboard, LogOut } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectCartCount, toggleCart } from '../../redux/features/cartSlice';
+import { logout } from '../../redux/features/userSlice';
+import { useRouter } from 'next/navigation';
 import { RootState } from '../../redux/store';
+import { apiFetch } from '../../utils/api';
 
 export default function Header() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    const [categories, setCategories] = useState<string[]>([]);
 
     // Redux Hooks
     const dispatch = useDispatch();
+    const router = useRouter();
     const cartCount = useSelector(selectCartCount);
     // You can access user state here later
-    // const { isAuthenticated, currentUser } = useSelector((state: RootState) => state.user);
+    const { isAuthenticated, currentUser } = useSelector((state: RootState) => state.user);
 
     useEffect(() => {
+        setMounted(true);
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 10);
         };
         window.addEventListener('scroll', handleScroll);
+
+        const fetchCategories = async () => {
+            try {
+                const res = await apiFetch('/categories');
+                setCategories(res.data.data.slice(0, 4)); // Only show top 4 in header
+            } catch (error) {
+                console.error('Failed to fetch categories:', error);
+            }
+        };
+        fetchCategories();
+
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     const handleToggleCart = () => {
         dispatch(toggleCart());
+    };
+
+    const handleLogout = () => {
+        dispatch(logout());
+        router.push('/');
     };
 
     return (
@@ -46,32 +69,72 @@ export default function Header() {
                     </div>
 
                     {/* Desktop Navigation */}
-                    <nav className="hidden md:flex space-x-8">
+                    <nav className="hidden md:flex items-center space-x-8">
                         <Link
-                            href="/#new-arrivals"
-                            className="text-sm font-medium text-zinc-700 transition-colors hover:text-black dark:text-zinc-300 dark:hover:text-white"
+                            href="/shop"
+                            className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
                         >
-                            New Arrivals
+                            Shop All
                         </Link>
-                        {['Men', 'Women', 'Sale', 'About'].map((item) => (
+                        {categories.map((item) => (
                             <Link
                                 key={item}
-                                href={`/${item.toLowerCase().replace(' ', '-')}`}
-                                className="text-sm font-medium text-zinc-700 transition-colors hover:text-black dark:text-zinc-300 dark:hover:text-white"
+                                href={`/shop?category=${encodeURIComponent(item)}`}
+                                className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-white"
                             >
                                 {item}
                             </Link>
                         ))}
                     </nav>
 
+
+
                     {/* Icons */}
                     <div className="hidden items-center space-x-6 md:flex">
+                        {/* Admin Toggle */}
+                        {mounted && isAuthenticated && currentUser?.role === 'admin' && (
+                            <Link
+                                href="/admin/dashboard"
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-black dark:border-white text-xs font-bold uppercase tracking-wider hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all"
+                            >
+                                Admin Panel
+                            </Link>
+                        )}
+
                         <button className="text-zinc-700 transition-all hover:text-black hover:scale-110 cursor-pointer dark:text-zinc-300 dark:hover:text-white">
                             <Search className="h-5 w-5" />
                         </button>
-                        <Link href="/login" className="text-zinc-700 transition-all hover:text-black hover:scale-110 cursor-pointer dark:text-zinc-300 dark:hover:text-white">
-                            <User className="h-5 w-5" />
-                        </Link>
+
+                        {/* Auth Buttons */}
+                        {mounted && isAuthenticated ? (
+                            <div className="flex items-center gap-4">
+                                <Link
+                                    href="/orders"
+                                    className="text-xs font-black uppercase tracking-widest text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white transition-colors"
+                                >
+                                    My Orders
+                                </Link>
+                                <button
+                                    onClick={handleLogout}
+                                    className="text-zinc-700 transition-all hover:text-red-600 hover:scale-110 cursor-pointer dark:text-zinc-300 dark:hover:text-red-400"
+                                    title="Logout"
+                                >
+                                    <LogOut className="h-5 w-5" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+                                <Link href="/login" className="text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white transition-colors">
+                                    Sign In
+                                </Link>
+                                <Link
+                                    href="/signup"
+                                    className="px-4 py-2 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 transition-all"
+                                >
+                                    Sign Up
+                                </Link>
+                            </div>
+                        )}
                         <button
                             onClick={handleToggleCart}
                             className="relative text-zinc-700 transition-all hover:text-black hover:scale-110 cursor-pointer dark:text-zinc-300 dark:hover:text-white"
@@ -98,42 +161,77 @@ export default function Header() {
             </div>
 
             {/* Mobile Menu */}
-            {isMobileMenuOpen && (
-                <div className="md:hidden">
-                    <div className="bg-white px-4 pb-6 pt-2 shadow-lg dark:bg-black">
-                        <nav className="flex flex-col space-y-4">
-                            {['New Arrivals', 'Men', 'Women', 'Sale', 'About'].map((item) => (
+            {
+                isMobileMenuOpen && (
+                    <div className="md:hidden">
+                        <div className="bg-white px-4 pb-6 pt-2 shadow-xl dark:bg-black border-t border-zinc-100 dark:border-zinc-800">
+                            <nav className="flex flex-col space-y-4">
                                 <Link
-                                    key={item}
-                                    href={`/${item.toLowerCase().replace(' ', '-')}`}
-                                    className="text-lg font-medium text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white"
+                                    href="/shop"
+                                    className="text-xl font-black uppercase tracking-tighter text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
-                                    {item}
+                                    Shop All
                                 </Link>
-                            ))}
-                            <div className="flex items-center space-x-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                                <button className="flex items-center space-x-2 text-zinc-700 dark:text-zinc-300">
-                                    <Search className="h-5 w-5" />
-                                    <span>Search</span>
-                                </button>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                                <Link href="/login" className="flex items-center space-x-2 text-zinc-700 dark:text-zinc-300">
-                                    <User className="h-5 w-5" />
-                                    <span>Account</span>
-                                </Link>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                                <button onClick={handleToggleCart} className="flex items-center space-x-2 text-zinc-700 dark:text-zinc-300">
-                                    <ShoppingBag className="h-5 w-5" />
-                                    <span>Cart ({cartCount})</span>
-                                </button>
-                            </div>
-                        </nav>
+                                {categories.map((item) => (
+                                    <Link
+                                        key={item}
+                                        href={`/shop?category=${encodeURIComponent(item)}`}
+                                        className="text-xl font-black uppercase tracking-tighter text-zinc-700 hover:text-black dark:text-zinc-300 dark:hover:text-white"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    >
+                                        {item}
+                                    </Link>
+                                ))}
+                                <div className="flex items-center space-x-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                    <button className="flex items-center space-x-2 text-zinc-700 dark:text-zinc-300 font-bold uppercase tracking-widest text-xs">
+                                        <Search className="h-5 w-5" />
+                                        <span>Search</span>
+                                    </button>
+                                </div>
+                                <div className="flex items-center space-x-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                    {isAuthenticated ? (
+                                        <button
+                                            onClick={() => {
+                                                handleLogout();
+                                                setIsMobileMenuOpen(false);
+                                            }}
+                                            className="flex items-center space-x-2 text-red-600 dark:text-red-400 w-full font-bold uppercase tracking-widest text-xs"
+                                        >
+                                            <LogOut className="h-5 w-5" />
+                                            <span>Logout</span>
+                                        </button>
+                                    ) : (
+                                        <div className="flex flex-col space-y-3 w-full">
+                                            <Link
+                                                href="/login"
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                                className="flex items-center space-x-2 text-zinc-700 dark:text-zinc-300 font-bold uppercase tracking-widest text-xs"
+                                            >
+                                                <User className="h-5 w-5" />
+                                                <span>Sign In</span>
+                                            </Link>
+                                            <Link
+                                                href="/signup"
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                                className="flex items-center justify-center w-full px-4 py-2 rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-black uppercase tracking-widest text-xs"
+                                            >
+                                                Sign Up
+                                            </Link>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex items-center space-x-4">
+                                    <button onClick={handleToggleCart} className="flex items-center space-x-2 text-zinc-700 dark:text-zinc-300 font-bold uppercase tracking-widest text-xs">
+                                        <ShoppingBag className="h-5 w-5" />
+                                        <span>Cart ({cartCount})</span>
+                                    </button>
+                                </div>
+                            </nav>
+                        </div>
                     </div>
-                </div>
-            )}
-        </header>
+                )
+            }
+        </header >
     );
 }

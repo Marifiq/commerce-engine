@@ -18,14 +18,15 @@ export const reviewService = {
     return data.data.data;
   },
 
+
   /**
-   * Create a new review
+   * Submit a new review
    */
-  async createReview(reviewData: { text: string; rating: number; productId: number }): Promise<Review> {
-    const data = await apiFetch("/reviews", {
+  async createReview(data: { productId: number; rating: number; text: string; images?: string[]; videos?: string[] }) {
+    const response = await apiFetch("/reviews", {
       method: "POST",
-      body: reviewData,
+      body: data,
     });
-    return data.data.data;
-  }
+    return response.data.data;
+  },
 };
