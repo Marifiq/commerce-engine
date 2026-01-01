@@ -538,7 +538,7 @@ export default function ProductsPage() {
                                         type="text"
                                         required
                                         placeholder="Enter category name"
-                                        className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-blue-500 transition-all text-zinc-900 dark:text-white"
+                                        className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white"
                                         value={newCategoryName}
                                         onChange={(e) => setNewCategoryName(e.target.value)}
                                     />
@@ -550,7 +550,7 @@ export default function ProductsPage() {
                                     type="file"
                                     accept="image/*"
                                     onChange={handleImageUpload}
-                                    className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-blue-500 transition-all text-zinc-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white dark:file:bg-white dark:file:text-black hover:file:opacity-90 file:cursor-pointer"
+                                    className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white dark:file:bg-white dark:file:text-black hover:file:opacity-90 file:cursor-pointer"
                                 />
                                 {imagePreview && (
                                     <div className="mt-3">
@@ -629,7 +629,7 @@ export default function ProductsPage() {
                                     <input
                                         type="text"
                                         placeholder="Category name..."
-                                        className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-blue-500 transition-all text-zinc-900 dark:text-white outline-none"
+                                        className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none"
                                         value={newCategoryName}
                                         onChange={(e) => setNewCategoryName(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleQuickAddCategory()}
@@ -654,7 +654,7 @@ export default function ProductsPage() {
                                                 <div className="flex-1 flex gap-2">
                                                     <input
                                                         autoFocus
-                                                        className="flex-1 bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-lg border border-blue-500 text-sm outline-none"
+                                                        className="flex-1 bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-lg border border-black dark:border-white text-sm outline-none"
                                                         value={editingCategoryValue}
                                                         onChange={(e) => setEditingCategoryValue(e.target.value)}
                                                         onKeyDown={(e) => e.key === 'Enter' && handleEditCategory(cat)}
@@ -681,7 +681,7 @@ export default function ProductsPage() {
                                                                 setCategoryBeingEdited(cat);
                                                                 setEditingCategoryValue(cat);
                                                             }}
-                                                            className="p-1.5 text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded-lg transition-all cursor-pointer"
+                                                            className="p-1.5 text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
                                                         >
                                                             <Edit2 size={16} />
                                                         </button>

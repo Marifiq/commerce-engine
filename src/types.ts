@@ -29,6 +29,8 @@ export interface Product {
     section?: string;
     stock: number;
     rating?: number;
+    averageRating?: number;
+    reviewCount?: number;
     color?: string;
     createdAt: string;
 }

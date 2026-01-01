@@ -98,6 +98,7 @@ app.post('/api/v1/users/signup', (req, res) => {
 app.get('/api/v1/products', (req, res) => {
     const db = readDb();
     let products = db.products;
+    const reviews = db.reviews || [];
     const { category, section } = req.query;
 
     if (category) {
@@ -107,9 +108,29 @@ app.get('/api/v1/products', (req, res) => {
         products = products.filter(p => p.section === section);
     }
 
+    // Add aggregate data to each product
+    const productReviews = {};
+    reviews.forEach(review => {
+        if (!productReviews[review.productId]) {
+            productReviews[review.productId] = { count: 0, totalRating: 0 };
+        }
+        productReviews[review.productId].count += 1;
+        productReviews[review.productId].totalRating += review.rating;
+    });
+
+    const enrichedProducts = products.map(p => {
+        const rData = productReviews[p.id] || { count: 0, totalRating: 0 };
+        const avgRating = rData.count > 0 ? (rData.totalRating / rData.count) : 0;
+        return {
+            ...p,
+            averageRating: Number(avgRating.toFixed(1)),
+            reviewCount: rData.count
+        };
+    });
+
     res.json({
         status: 'success',
-        data: { data: products }
+        data: { data: enrichedProducts }
     });
 });
 
@@ -167,9 +188,20 @@ app.get('/api/v1/products/:id', (req, res) => {
     const db = readDb();
     const product = db.products.find(p => p.id == req.params.id);
     if (product) {
+        const reviews = db.reviews || [];
+        const pReviews = reviews.filter(r => r.productId == product.id);
+        const count = pReviews.length;
+        const avgRating = count > 0 ? (pReviews.reduce((sum, r) => sum + r.rating, 0) / count) : 0;
+
+        const enrichedProduct = {
+            ...product,
+            averageRating: Number(avgRating.toFixed(1)),
+            reviewCount: count
+        };
+
         res.json({
             status: 'success',
-            data: { data: product }
+            data: { data: enrichedProduct }
         });
     } else {
         res.status(404).json({ message: 'Product not found' });

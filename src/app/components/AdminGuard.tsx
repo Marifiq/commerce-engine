@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
+import LoadingSpinner from './ui/LoadingSpinner';
 
 export default function AdminGuard({ children }: { children: React.ReactNode }) {
     const { currentUser, isAuthenticated, loading } = useSelector((state: any) => state.user);
@@ -22,10 +23,11 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
     if (loading || !isAuthorized) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+                <LoadingSpinner size="large" />
             </div>
         );
     }
 
     return <>{children}</>;
 }
+

@@ -23,13 +23,14 @@ import MediaViewer from '@/app/components/MediaViewer';
 interface Review {
     id: number | string;
     productId: number | string;
-    user: string;
+    user: string | { name: string; email: string; role?: string };
     rating: number;
     text: string;
     isApproved: boolean;
     images?: string[];
     videos?: string[];
 }
+
 
 export default function ReviewsPage() {
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -126,11 +127,18 @@ export default function ReviewsPage() {
         });
     };
 
-    const filteredReviews = reviews.filter(r =>
-        r.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.productId.toString().includes(searchTerm)
-    ).sort((a, b) => {
+    const getUserName = (user: any) => {
+        if (!user) return 'Anonymous User';
+        if (typeof user === 'object') return user.name || 'Anonymous User';
+        return user;
+    };
+
+    const filteredReviews = reviews.filter(r => {
+        const userName = getUserName(r.user);
+        return userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            r.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            r.productId.toString().includes(searchTerm);
+    }).sort((a, b) => {
         switch (sortBy) {
             case 'newest':
                 return Number(b.id) - Number(a.id);
@@ -141,9 +149,9 @@ export default function ReviewsPage() {
             case 'rating-low':
                 return a.rating - b.rating;
             case 'user-asc':
-                return a.user.localeCompare(b.user);
+                return getUserName(a.user).localeCompare(getUserName(b.user));
             case 'user-desc':
-                return b.user.localeCompare(a.user);
+                return getUserName(b.user).localeCompare(getUserName(a.user));
             default:
                 return 0;
         }
@@ -210,7 +218,7 @@ export default function ReviewsPage() {
                                         <User size={14} className="text-zinc-400" />
                                     </div>
                                     <span className="font-bold text-zinc-900 dark:text-white text-xs truncate max-w-[100px]">
-                                        {review.user}
+                                        {getUserName(review.user)}
                                     </span>
                                 </div>
 

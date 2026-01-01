@@ -102,7 +102,7 @@ export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModa
                     {/* Product List */}
                     {loading ? (
                         <div className="py-12 flex justify-center">
-                            <Loader2 className="animate-spin text-zinc-400" size={32} />
+                            <Loader2 className="animate-spin text-black dark:text-white" size={32} />
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
@@ -165,7 +165,7 @@ export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModa
                         disabled={!selectedProduct || submitting}
                         className="flex-1 px-4 py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-black/5 cursor-pointer hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                        {submitting && <Loader2 className="animate-spin" size={14} />}
+                        {submitting && <Loader2 className="animate-spin text-white dark:text-black" size={14} />}
                         <Plus size={14} />
                         Add to Cart
                     </button>

@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Star } from 'lucide-react';
+
 import { useDispatch } from 'react-redux';
 import { addItemToCart } from '../../redux/features/cartSlice';
 import { AppDispatch } from '../../redux/store';
@@ -14,9 +15,13 @@ interface ProductCardProps {
     price: number;
     image: string;
     category: string;
+    averageRating?: number;
+    reviewCount?: number;
 }
 
-export default function ProductCard({ id, name, price, image, category }: ProductCardProps) {
+
+export default function ProductCard({ id, name, price, image, category, averageRating, reviewCount }: ProductCardProps) {
+
     const dispatch = useDispatch<AppDispatch>();
 
     const handleAddToCart = (e: React.MouseEvent) => {
@@ -40,15 +45,34 @@ export default function ProductCard({ id, name, price, image, category }: Produc
 
             <div className="mt-4 flex justify-between">
                 <div>
-                    <h3 className="text-sm text-zinc-700 dark:text-zinc-200">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
                         <Link href={`/product/${id}`} className="cursor-pointer">
                             <span aria-hidden="true" className="absolute" />
                             {name}
                         </Link>
                     </h3>
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{category}</p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{category}</p>
+                        {(averageRating !== undefined && reviewCount !== undefined) && (
+                            <>
+                                <span className="text-zinc-300 dark:text-zinc-700 mx-1">•</span>
+                                <div className="flex items-center gap-1">
+                                    <div className="flex items-center">
+                                        {[...Array(5)].map((_, i) => (
+                                            <Star
+                                                key={i}
+                                                size={10}
+                                                className={`${i < Math.floor(averageRating) ? 'fill-black text-black dark:fill-white dark:text-white' : 'text-zinc-200 dark:text-zinc-700'}`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <span className="text-[10px] font-bold text-zinc-500">{averageRating} ({reviewCount})</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
-                <p className="text-sm font-medium text-zinc-900 dark:text-white">${price}</p>
+                <p className="text-sm font-black text-zinc-900 dark:text-white">${price}</p>
             </div>
 
             <div className="mt-4">

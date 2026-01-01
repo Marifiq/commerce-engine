@@ -202,7 +202,7 @@ export default function OrdersPage() {
                                         <div className="relative inline-block">
                                             {updatingId === order.id ? (
                                                 <div className="flex items-center gap-2 text-sm text-zinc-500">
-                                                    <Loader2 className="animate-spin" size={14} /> Updating...
+                                                    <Loader2 className="animate-spin text-black dark:text-white" size={14} /> Updating...
                                                 </div>
                                             ) : (
                                                 <select

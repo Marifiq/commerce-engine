@@ -122,15 +122,15 @@ export default function ProductPage() {
 
                         <div className="mt-8 flex items-center space-x-2">
                             <div className="flex items-center">
-                                {[0, 1, 2, 3, 4].map((rating) => (
+                                {[...Array(5)].map((_, i) => (
                                     <Star
-                                        key={rating}
-                                        className={`${(product.rating || 4.5) > rating ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-300 dark:text-zinc-700'
+                                        key={i}
+                                        className={`${(product.averageRating || 0) > i ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-300 dark:text-zinc-700'
                                             } h-4 w-4 shrink-0`}
                                     />
                                 ))}
                             </div>
-                            <span className="text-sm text-zinc-500">({reviews.length} reviews)</span>
+                            <span className="text-sm text-zinc-500">({product.reviewCount || 0} reviews)</span>
                         </div>
 
                         <div className="mt-10">
@@ -168,14 +168,14 @@ export default function ProductPage() {
                             <h2 className="text-3xl font-bold text-zinc-900 dark:text-white">Customer Reviews</h2>
                             <div className="flex items-center mt-2 text-sm text-zinc-500">
                                 <div className="flex items-center mr-2">
-                                    {[0, 1, 2, 3, 4].map((star) => (
+                                    {[...Array(5)].map((_, i) => (
                                         <Star
-                                            key={star}
-                                            className={`h-4 w-4 ${(product.rating || 0) > star ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-300'}`}
+                                            key={i}
+                                            className={`h-4 w-4 ${(product.averageRating || 0) > i ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-300'}`}
                                         />
                                     ))}
                                 </div>
-                                <span>Based on {reviews.length} reviews</span>
+                                <span>Based on {product.reviewCount || 0} reviews</span>
                             </div>
                         </div>
                     </div>
