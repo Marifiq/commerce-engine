@@ -8,23 +8,35 @@ import {
     selectCartItems,
     selectCartTotal,
     toggleCart,
-    removeFromCart,
-    updateQuantity,
-    toggleCheckout
+    removeItemFromCart,
+    updateCartItemQuantity,
+    toggleCheckout,
+    fetchCart
 } from '../../redux/features/cartSlice';
+import { AppDispatch, RootState } from '../../redux/store';
+import { useEffect } from 'react';
+import { resolveImageUrl } from '../../utils/imageUtils';
 
 export default function CartSidebar() {
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<AppDispatch>();
     const isOpen = useSelector(selectIsCartOpen);
     const items = useSelector(selectCartItems);
     const total = useSelector(selectCartTotal);
+    const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
+
+    useEffect(() => {
+        if (isAuthenticated && isOpen) {
+            dispatch(fetchCart());
+        }
+    }, [isAuthenticated, isOpen, dispatch]);
 
     const handleClose = () => dispatch(toggleCart());
     const handleCheckout = () => dispatch(toggleCheckout());
 
+
     return (
         <div
-            className={`fixed inset-y-0 right-0 z-[60] w-full transform bg-white shadow-xl transition-transform duration-300 ease-in-out dark:bg-zinc-900 sm:max-w-md ${isOpen ? 'translate-x-0' : 'translate-x-full'
+            className={`fixed inset-y-0 right-0 z-50 w-full transform bg-white shadow-xl transition-transform duration-300 ease-in-out dark:bg-zinc-900 sm:max-w-md ${isOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
         >
             <div className="flex h-full flex-col">
@@ -35,7 +47,7 @@ export default function CartSidebar() {
                         className="relative -m-2 p-2 text-zinc-400 hover:text-zinc-500"
                         onClick={handleClose}
                     >
-                        <X className="h-6 w-6" aria-hidden="true" />
+                        <X className="h-6 w-6 cursor-pointer" aria-hidden="true" />
                     </button>
                 </div>
 
@@ -55,13 +67,11 @@ export default function CartSidebar() {
                             <ul role="list" className="-my-6 divide-y divide-zinc-200 dark:divide-zinc-800">
                                 {items.map((item) => (
                                     <li key={item.id} className="flex py-6">
-                                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-700">
-                                            <Image
-                                                src={item.image}
+                                        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-md border border-zinc-200 dark:bg-zinc-800 dark:border-zinc-700">
+                                            <img
+                                                src={resolveImageUrl(item.image)}
                                                 alt={item.name}
-                                                width={96}
-                                                height={96}
-                                                className="h-full w-full object-cover object-center"
+                                                className="h-full w-full object-cover object-center p-2"
                                             />
                                         </div>
 
@@ -75,15 +85,21 @@ export default function CartSidebar() {
                                             <div className="flex flex-1 items-end justify-between text-sm">
                                                 <div className="flex items-center gap-2">
                                                     <button
-                                                        onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity - 1 }))}
-                                                        className="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                        onClick={() => {
+                                                            if (item.quantity > 1) {
+                                                                dispatch(updateCartItemQuantity({ cartItemId: item.id, quantity: item.quantity - 1 }));
+                                                            } else {
+                                                                dispatch(removeItemFromCart(item.id));
+                                                            }
+                                                        }}
+                                                        className="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
                                                     >
                                                         <Minus className="h-4 w-4" />
                                                     </button>
                                                     <span className="text-zinc-500 dark:text-zinc-400 font-medium w-4 text-center">{item.quantity}</span>
                                                     <button
-                                                        onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity + 1 }))}
-                                                        className="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                        onClick={() => dispatch(updateCartItemQuantity({ cartItemId: item.id, quantity: item.quantity + 1 }))}
+                                                        className="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
                                                     >
                                                         <Plus className="h-4 w-4" />
                                                     </button>
@@ -91,13 +107,14 @@ export default function CartSidebar() {
 
                                                 <button
                                                     type="button"
-                                                    onClick={() => dispatch(removeFromCart(item.id))}
-                                                    className="font-medium text-black hover:text-zinc-500 dark:text-white dark:hover:text-zinc-400"
+                                                    onClick={() => dispatch(removeItemFromCart(item.id))}
+                                                    className="font-medium text-black hover:text-zinc-500 dark:text-white dark:hover:text-zinc-400 cursor-pointer"
                                                 >
                                                     Remove
                                                 </button>
                                             </div>
                                         </div>
+
                                     </li>
                                 ))}
                             </ul>

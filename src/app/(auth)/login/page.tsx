@@ -6,15 +6,16 @@ import * as Yup from 'yup';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { login } from '../../redux/features/userSlice';
-import { users } from '../../data/users';
+import { useDispatch, useSelector } from 'react-redux';
+import { login, clearError } from '../../../redux/features/userSlice';
+import { RootState, AppDispatch } from '../../../redux/store';
+
 
 export default function LoginPage() {
     const router = useRouter();
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<AppDispatch>();
+    const { loading, error } = useSelector((state: RootState) => state.user);
     const [showPassword, setShowPassword] = useState(false);
-    const [loginError, setLoginError] = useState('');
 
     const validationSchema = Yup.object({
         email: Yup.string().email('Invalid email address').required('Email is required'),
@@ -27,26 +28,16 @@ export default function LoginPage() {
             password: '',
         },
         validationSchema,
-        onSubmit: (values) => {
-            setLoginError('');
-            // Authenticate against dummy users
-            const user = users.find(
-                (u) => u.email === values.email && u.password === values.password
-            );
-
-            if (user) {
-                console.log('Login Successful:', user);
-                // Dispatch login action
-                dispatch(login({ id: user.id, name: user.name, email: user.email }));
-                setTimeout(() => {
-                    alert(`Welcome back, ${user.name}!`);
-                    router.push('/');
-                }, 100);
-            } else {
-                setLoginError('Invalid email or password');
+        onSubmit: async (values) => {
+            dispatch(clearError());
+            const resultAction = await dispatch(login(values));
+            
+            if (login.fulfilled.match(resultAction)) {
+                router.push('/');
             }
         },
     });
+
 
     return (
         <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8 bg-zinc-50 dark:bg-black">
@@ -64,11 +55,12 @@ export default function LoginPage() {
                 </div>
 
                 <form className="mt-8 space-y-6" onSubmit={formik.handleSubmit}>
-                    {loginError && (
+                    {error && (
                         <div className="bg-red-50 text-red-500 text-sm p-3 rounded-md text-center border border-red-200">
-                            {loginError}
+                            {error}
                         </div>
                     )}
+
                     <div className="space-y-4 rounded-md shadow-sm">
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -80,9 +72,6 @@ export default function LoginPage() {
                                 </div>
                                 <input
                                     id="email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
                                     className={`block w-full rounded-md border py-2 pl-10 pr-3 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.email && formik.errors.email
                                         ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                                         : 'border-zinc-300 focus:border-black focus:ring-black dark:bg-zinc-800 dark:border-zinc-700 dark:text-white'
@@ -106,9 +95,6 @@ export default function LoginPage() {
                                 </div>
                                 <input
                                     id="password"
-                                    name="password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    autoComplete="current-password"
                                     className={`block w-full rounded-md border py-2 pl-10 pr-10 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.password && formik.errors.password
                                         ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                                         : 'border-zinc-300 focus:border-black focus:ring-black dark:bg-zinc-800 dark:border-zinc-700 dark:text-white'
@@ -157,9 +143,10 @@ export default function LoginPage() {
                     <div>
                         <button
                             type="submit"
-                            className="group relative flex w-full justify-center rounded-md bg-black px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 cursor-pointer dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                            disabled={loading}
+                            className={`group relative flex w-full justify-center rounded-md bg-black px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 cursor-pointer dark:bg-white dark:text-black dark:hover:bg-zinc-200 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                            Sign in
+                            {loading ? 'Signing in...' : 'Sign in'}
                         </button>
                     </div>
 

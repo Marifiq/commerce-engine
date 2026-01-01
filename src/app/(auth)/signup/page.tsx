@@ -6,9 +6,14 @@ import * as Yup from 'yup';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { signup, clearError } from '../../../redux/features/userSlice';
+import { RootState, AppDispatch } from '../../../redux/store';
 
 export default function SignupPage() {
     const router = useRouter();
+    const dispatch = useDispatch<AppDispatch>();
+    const { loading, error } = useSelector((state: RootState) => state.user);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -31,15 +36,16 @@ export default function SignupPage() {
             confirmPassword: '',
         },
         validationSchema,
-        onSubmit: (values) => {
-            console.log('Signup Attempt:', values);
-            // Mock signup success
-            setTimeout(() => {
-                alert('Account created successfully! Please sign in.');
-                router.push('/login');
-            }, 500);
+        onSubmit: async (values) => {
+            dispatch(clearError());
+            const resultAction = await dispatch(signup(values));
+            
+            if (signup.fulfilled.match(resultAction)) {
+                router.push('/');
+            }
         },
     });
+
 
     return (
         <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8 bg-zinc-50 dark:bg-black">
@@ -67,7 +73,6 @@ export default function SignupPage() {
                                 </div>
                                 <input
                                     id="name"
-                                    name="name"
                                     type="text"
                                     autoComplete="name"
                                     className={`block w-full rounded-md border py-2 pl-10 pr-3 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.name && formik.errors.name
@@ -77,6 +82,7 @@ export default function SignupPage() {
                                     placeholder="John Doe"
                                     {...formik.getFieldProps('name')}
                                 />
+
                             </div>
                             {formik.touched.name && formik.errors.name && (
                                 <p className="mt-1 text-xs text-red-500">{formik.errors.name}</p>
@@ -94,7 +100,6 @@ export default function SignupPage() {
                                 </div>
                                 <input
                                     id="email"
-                                    name="email"
                                     type="email"
                                     autoComplete="email"
                                     className={`block w-full rounded-md border py-2 pl-10 pr-3 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.email && formik.errors.email
@@ -104,6 +109,7 @@ export default function SignupPage() {
                                     placeholder="you@example.com"
                                     {...formik.getFieldProps('email')}
                                 />
+
                             </div>
                             {formik.touched.email && formik.errors.email && (
                                 <p className="mt-1 text-xs text-red-500">{formik.errors.email}</p>
@@ -121,7 +127,6 @@ export default function SignupPage() {
                                 </div>
                                 <input
                                     id="password"
-                                    name="password"
                                     type={showPassword ? 'text' : 'password'}
                                     autoComplete="new-password"
                                     className={`block w-full rounded-md border py-2 pl-10 pr-10 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.password && formik.errors.password
@@ -131,6 +136,7 @@ export default function SignupPage() {
                                     placeholder="••••••••"
                                     {...formik.getFieldProps('password')}
                                 />
+
                                 <button
                                     type="button"
                                     className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-zinc-400 hover:text-black dark:hover:text-white"
@@ -159,7 +165,6 @@ export default function SignupPage() {
                                 </div>
                                 <input
                                     id="confirmPassword"
-                                    name="confirmPassword"
                                     type={showConfirmPassword ? 'text' : 'password'}
                                     autoComplete="new-password"
                                     className={`block w-full rounded-md border py-2 pl-10 pr-10 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.confirmPassword && formik.errors.confirmPassword
@@ -169,6 +174,7 @@ export default function SignupPage() {
                                     placeholder="••••••••"
                                     {...formik.getFieldProps('confirmPassword')}
                                 />
+
                                 <button
                                     type="button"
                                     className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-zinc-400 hover:text-black dark:hover:text-white"
@@ -190,9 +196,10 @@ export default function SignupPage() {
                     <div>
                         <button
                             type="submit"
-                            className="group relative flex w-full justify-center rounded-md bg-black px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 cursor-pointer dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                            disabled={loading}
+                            className={`group relative flex w-full justify-center rounded-md bg-black px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 cursor-pointer dark:bg-white dark:text-black dark:hover:bg-zinc-200 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                            Sign up
+                            {loading ? 'Creating account...' : 'Sign up'}
                         </button>
                     </div>
 

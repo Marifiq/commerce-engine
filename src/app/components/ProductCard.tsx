@@ -4,7 +4,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingBag } from 'lucide-react';
 import { useDispatch } from 'react-redux';
-import { addToCart } from '../../redux/features/cartSlice';
+import { addItemToCart } from '../../redux/features/cartSlice';
+import { AppDispatch } from '../../redux/store';
+import { resolveImageUrl } from '../../utils/imageUtils';
 
 interface ProductCardProps {
     id: number;
@@ -15,31 +17,31 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ id, name, price, image, category }: ProductCardProps) {
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<AppDispatch>();
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        dispatch(addToCart({ id, name, price, image }));
+        dispatch(addItemToCart({ productId: id, quantity: 1 }));
     };
 
     return (
         <div className="group relative">
-            <Link href={`/product/${id}`} className="block">
+            <Link href={`/product/${id}`} className="block cursor-pointer">
                 <div className="aspect-h-1 aspect-w-1 w-full overflow-hidden rounded-lg bg-zinc-200 xl:aspect-h-8 xl:aspect-w-7 relative">
-                    <Image
-                        src={image}
+                    <img
+                        src={resolveImageUrl(image)}
                         alt={name}
-                        fill
-                        className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                        className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
                     />
                 </div>
+
             </Link>
 
             <div className="mt-4 flex justify-between">
                 <div>
                     <h3 className="text-sm text-zinc-700 dark:text-zinc-200">
-                        <Link href={`/product/${id}`}>
+                        <Link href={`/product/${id}`} className="cursor-pointer">
                             <span aria-hidden="true" className="absolute" />
                             {name}
                         </Link>

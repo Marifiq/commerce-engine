@@ -1,5 +1,9 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { Star } from 'lucide-react';
-import { reviews } from '../../data/reviews';
+import { reviewService } from '../../services/reviewService';
+import { Review } from '../../types';
 
 function StarRating({ rating }: { rating: number }) {
     return (
@@ -16,6 +20,26 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export default function Reviews() {
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchReviews = async () => {
+            try {
+                const data = await reviewService.getAllReviews();
+                setReviews(data);
+            } catch (error) {
+                console.error("Failed to fetch reviews:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchReviews();
+    }, []);
+
+    if (loading) return null;
+    if (reviews.length === 0) return null;
+
     return (
         <div className="bg-white py-24 sm:py-32 dark:bg-black">
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -34,9 +58,9 @@ export default function Reviews() {
                                 <div className="flex items-center gap-x-4">
                                     <div className="text-sm leading-6">
                                         <p className="font-semibold text-zinc-900 dark:text-white">
-                                            {review.name}
+                                            {review.user?.name || "Verified Customer"}
                                         </p>
-                                        <p className="text-zinc-600 dark:text-zinc-400">{review.role}</p>
+                                        <p className="text-zinc-600 dark:text-zinc-400">{review.user?.role || "Gentleman"}</p>
                                     </div>
                                 </div>
                                 <div className="mt-4">

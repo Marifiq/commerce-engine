@@ -1,7 +1,35 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+
 import ProductCard from './ProductCard';
-import { bestSellers } from '../../data/products';
+import { productService } from '../../services/productService';
+import { Product } from '../../types';
 
 export default function BestSellers() {
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const data = await productService.getAllProducts('?section=Best Sellers');
+                setProducts(data);
+            } catch (error) {
+                console.error('Failed to fetch best sellers:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchProducts();
+    }, []);
+
+    if (loading) return (
+        <div className="bg-zinc-50 py-16 dark:bg-zinc-900/50 text-center">
+            <p className="text-zinc-500">Loading best sellers...</p>
+        </div>
+    );
+
     return (
         <div className="bg-zinc-50 py-16 sm:py-24 dark:bg-zinc-900/50">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -11,10 +39,11 @@ export default function BestSellers() {
                 </div>
 
                 <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
-                    {bestSellers.map((product) => (
+                    {products.map((product) => (
                         <ProductCard key={product.id} {...product} />
                     ))}
                 </div>
+
             </div>
         </div>
     );
