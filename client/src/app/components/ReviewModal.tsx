@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { X, Star, Upload, Trash2, Film, Image as ImageIcon } from 'lucide-react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { resolveImageUrl } from '../../utils/imageUtils';
 
 interface ReviewModalProps {
     isOpen: boolean;
@@ -130,7 +131,7 @@ export default function ReviewModal({ isOpen, onClose, onSubmit, productName, pr
                 <div className="p-6 overflow-y-auto">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="h-16 w-16 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden shrink-0">
-                            <img src={productImage} alt={productName} className="h-full w-full object-cover" />
+                            <img src={resolveImageUrl(productImage)} alt={productName} className="h-full w-full object-cover" />
                         </div>
                         <div>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400">Reviewing</p>

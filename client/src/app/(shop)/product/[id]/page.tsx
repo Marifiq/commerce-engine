@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import {
   ShoppingBag,
@@ -11,6 +11,8 @@ import {
   RefreshCcw,
   Film,
   ExternalLink,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useDispatch } from "react-redux";
@@ -43,6 +45,7 @@ export default function ProductPage() {
     media: "",
     type: "image",
   });
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
   const fetchProductData = async () => {
     try {
@@ -72,6 +75,27 @@ export default function ProductPage() {
     fetchProductData();
   }, [id]);
 
+  // Get all media sorted by order, with primary first - MUST be before early returns
+  const allMedia = useMemo(() => {
+    if (!product?.media || product.media.length === 0) return [];
+    return [...product.media].sort((a, b) => {
+      // Primary first, then by order
+      if (a.isPrimary) return -1;
+      if (b.isPrimary) return 1;
+      return a.order - b.order;
+    });
+  }, [product?.media]);
+
+  // Initialize currentMediaIndex when product changes
+  useEffect(() => {
+    if (allMedia.length > 0) {
+      const primaryIndex = allMedia.findIndex(m => m.isPrimary);
+      setCurrentMediaIndex(primaryIndex >= 0 ? primaryIndex : 0);
+    } else {
+      setCurrentMediaIndex(0);
+    }
+  }, [product?.id, allMedia]);
+
   if (loading)
     return (
       <div className="min-h-screen bg-white flex items-center justify-center dark:bg-black">
@@ -92,9 +116,10 @@ export default function ProductPage() {
     );
 
   const handleAddToCart = async () => {
+    if (!product) return;
     try {
       await dispatch(
-        addItemToCart({ productId: Number(id), quantity: 1 })
+        addItemToCart({ product, quantity: 1 })
       ).unwrap();
       showToast("Product added to cart", "success");
     } catch (error: unknown) {
@@ -103,8 +128,8 @@ export default function ProductPage() {
         typeof error === "string"
           ? error
           : error instanceof Error
-          ? error.message
-          : "Failed to add product to cart";
+            ? error.message
+            : "Failed to add product to cart";
       showToast(errorMessage, "error");
     }
   };
@@ -121,7 +146,30 @@ export default function ProductPage() {
     });
   };
 
-  const imageUrl = resolveImageUrl(product.image);
+  // Use primary image or first media or fallback to product.image
+  const primaryImage = allMedia.length > 0
+    ? (allMedia.find(m => m.isPrimary && m.type === "image") || allMedia.find(m => m.type === "image") || allMedia[0])
+    : null;
+  const imageUrl = primaryImage
+    ? resolveImageUrl(primaryImage.url)
+    : resolveImageUrl(product.image);
+
+  const currentMedia = allMedia.length > 0 && currentMediaIndex < allMedia.length
+    ? allMedia[currentMediaIndex]
+    : (primaryImage || { url: product.image, type: "image" as const });
+  const currentMediaUrl = resolveImageUrl(currentMedia.url);
+
+  const handleNextMedia = () => {
+    if (allMedia.length > 0) {
+      setCurrentMediaIndex((prev) => (prev + 1) % allMedia.length);
+    }
+  };
+
+  const handlePrevMedia = () => {
+    if (allMedia.length > 0) {
+      setCurrentMediaIndex((prev) => (prev - 1 + allMedia.length) % allMedia.length);
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-black min-h-screen pb-20">
@@ -135,13 +183,94 @@ export default function ProductPage() {
         </Link>
 
         <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 xl:gap-x-16">
-          {/* Image gallery */}
+          {/* Media gallery */}
           <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-900 shadow-sm">
-            <img
-              src={imageUrl}
-              alt={product.name}
-              className="h-full w-full object-cover object-center"
-            />
+            {allMedia.length > 1 ? (
+              <>
+                {/* Carousel with multiple media */}
+                <div className="relative h-full w-full">
+                  {currentMedia.type === "image" ? (
+                    <img
+                      src={currentMediaUrl}
+                      alt={product.name}
+                      className="h-full w-full object-cover object-center cursor-pointer"
+                      onClick={() => handleMediaClick(currentMediaUrl)}
+                    />
+                  ) : (
+                    <video
+                      src={currentMediaUrl}
+                      controls
+                      className="h-full w-full object-cover object-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  )}
+
+                  {/* Navigation arrows */}
+                  <button
+                    onClick={handlePrevMedia}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white dark:hover:bg-zinc-700 transition-all cursor-pointer"
+                    aria-label="Previous media"
+                  >
+                    <ChevronLeft size={20} className="text-zinc-900 dark:text-white" />
+                  </button>
+                  <button
+                    onClick={handleNextMedia}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white dark:hover:bg-zinc-700 transition-all cursor-pointer"
+                    aria-label="Next media"
+                  >
+                    <ChevronRight size={20} className="text-zinc-900 dark:text-white" />
+                  </button>
+                </div>
+
+                {/* Thumbnail navigation */}
+                {allMedia.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg">
+                    {allMedia.map((media, index) => (
+                      <button
+                        key={media.id || index}
+                        onClick={() => setCurrentMediaIndex(index)}
+                        className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${index === currentMediaIndex
+                          ? "border-black dark:border-white"
+                          : "border-transparent opacity-60 hover:opacity-100"
+                          }`}
+                      >
+                        {media.type === "image" ? (
+                          <img
+                            src={resolveImageUrl(media.url)}
+                            alt={`${product.name} ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
+                            <Film size={16} className="text-zinc-600 dark:text-zinc-300" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Single image/video */
+              currentMedia.type === "image" ? (
+                <img
+                  src={currentMediaUrl}
+                  alt={product.name}
+                  className="h-full w-full object-cover object-center cursor-pointer"
+                  onClick={() => handleMediaClick(currentMediaUrl)}
+                />
+              ) : (
+                <video
+                  src={currentMediaUrl}
+                  controls
+                  className="h-full w-full object-cover object-center"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              )
+            )}
           </div>
 
           {/* Product info */}
@@ -173,11 +302,10 @@ export default function ProductPage() {
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
-                    className={`${
-                      (product.averageRating || 0) > i
-                        ? "text-yellow-400 fill-yellow-400"
-                        : "text-zinc-300 dark:text-zinc-700"
-                    } h-4 w-4 shrink-0`}
+                    className={`${(product.averageRating || 0) > i
+                      ? "text-yellow-400 fill-yellow-400"
+                      : "text-zinc-300 dark:text-zinc-700"
+                      } h-4 w-4 shrink-0`}
                   />
                 ))}
               </div>
@@ -242,11 +370,10 @@ export default function ProductPage() {
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`h-4 w-4 ${
-                        (product.averageRating || 0) > i
-                          ? "text-yellow-400 fill-yellow-400"
-                          : "text-zinc-300"
-                      }`}
+                      className={`h-4 w-4 ${(product.averageRating || 0) > i
+                        ? "text-yellow-400 fill-yellow-400"
+                        : "text-zinc-300"
+                        }`}
                     />
                   ))}
                 </div>
@@ -272,11 +399,10 @@ export default function ProductPage() {
                       {[0, 1, 2, 3, 4].map((star) => (
                         <Star
                           key={star}
-                          className={`h-4 w-4 ${
-                            review.rating > star
-                              ? "text-yellow-400 fill-yellow-400"
-                              : "text-zinc-300"
-                          }`}
+                          className={`h-4 w-4 ${review.rating > star
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-zinc-300"
+                            }`}
                         />
                       ))}
                     </div>
@@ -295,46 +421,46 @@ export default function ProductPage() {
                   {/* Media Display */}
                   {(review.images?.length || 0) + (review.videos?.length || 0) >
                     0 && (
-                    <div className="flex flex-wrap gap-3">
-                      {review.images?.map((img, idx) => (
-                        <button
-                          key={`img-${idx}`}
-                          onClick={() => handleMediaClick(img)}
-                          className="relative h-16 w-16 rounded-xl border border-zinc-100 dark:border-zinc-800 overflow-hidden group cursor-pointer hover:border-black dark:hover:border-white transition-all shadow-sm focus:outline-none"
-                        >
-                          <img
-                            src={img}
-                            alt="review"
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-all">
-                            <ExternalLink
-                              size={14}
-                              className="text-white opacity-0 group-hover:opacity-100"
+                      <div className="flex flex-wrap gap-3">
+                        {review.images?.map((img, idx) => (
+                          <button
+                            key={`img-${idx}`}
+                            onClick={() => handleMediaClick(img)}
+                            className="relative h-16 w-16 rounded-xl border border-zinc-100 dark:border-zinc-800 overflow-hidden group cursor-pointer hover:border-black dark:hover:border-white transition-all shadow-sm focus:outline-none"
+                          >
+                            <img
+                              src={img}
+                              alt="review"
+                              className="h-full w-full object-cover"
                             />
-                          </div>
-                        </button>
-                      ))}
-                      {review.videos?.map((vid, idx) => (
-                        <button
-                          key={`vid-${idx}`}
-                          onClick={() => handleMediaClick(vid)}
-                          className="relative h-16 w-16 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center group cursor-pointer hover:border-black dark:hover:border-white transition-all shadow-sm focus:outline-none"
-                        >
-                          <Film
-                            size={20}
-                            className="text-zinc-400 group-hover:text-black dark:group-hover:text-white"
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-all">
-                            <ExternalLink
-                              size={14}
-                              className="text-white opacity-0 group-hover:opacity-100"
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-all">
+                              <ExternalLink
+                                size={14}
+                                className="text-white opacity-0 group-hover:opacity-100"
+                              />
+                            </div>
+                          </button>
+                        ))}
+                        {review.videos?.map((vid, idx) => (
+                          <button
+                            key={`vid-${idx}`}
+                            onClick={() => handleMediaClick(vid)}
+                            className="relative h-16 w-16 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center group cursor-pointer hover:border-black dark:hover:border-white transition-all shadow-sm focus:outline-none"
+                          >
+                            <Film
+                              size={20}
+                              className="text-zinc-400 group-hover:text-black dark:group-hover:text-white"
                             />
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-all">
+                              <ExternalLink
+                                size={14}
+                                className="text-white opacity-0 group-hover:opacity-100"
+                              />
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                 </div>
               ))}
             </div>

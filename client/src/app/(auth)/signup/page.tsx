@@ -8,6 +8,7 @@ import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { signup, clearError } from '../../../redux/features/userSlice';
+import { mergeGuestCart } from '../../../redux/features/cartSlice';
 import { RootState, AppDispatch } from '../../../redux/store';
 
 export default function SignupPage() {
@@ -39,8 +40,9 @@ export default function SignupPage() {
         onSubmit: async (values) => {
             dispatch(clearError());
             const resultAction = await dispatch(signup(values));
-            
+
             if (signup.fulfilled.match(resultAction)) {
+                await dispatch(mergeGuestCart());
                 router.push('/');
             }
         },

@@ -7,7 +7,6 @@ import {
     MessageSquare,
     Star,
     Trash2,
-    Loader2,
     CheckCircle,
     XCircle,
     User,
@@ -19,6 +18,8 @@ import { useToast } from '@/app/components/ToastContext';
 import { Modal } from '@/app/components/Modal';
 import { Pagination } from '@/app/components/Pagination';
 import MediaViewer from '@/app/components/MediaViewer';
+import LoadingSpinner from '@/app/components/ui/LoadingSpinner';
+import Skeleton from '@/app/components/ui/Skeleton';
 
 interface Review {
     id: number | string;
@@ -206,9 +207,36 @@ export default function ReviewsPage() {
             {/* Reviews List */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {loading ? (
-                    <div className="col-span-full py-20 flex justify-center">
-                        <Loader2 className="animate-spin text-black dark:text-white" size={32} />
-                    </div>
+                    Array.from({ length: 6 }).map((_, index) => (
+                        <div key={index} className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <Skeleton variant="circular" className="h-8 w-8" />
+                                        <Skeleton className="h-4 w-24" />
+                                    </div>
+                                    <Skeleton className="h-5 w-16 rounded-full" />
+                                </div>
+                                <div className="flex items-center gap-0.5 mb-2">
+                                    {[...Array(5)].map((_, i) => (
+                                        <Skeleton key={i} className="h-3 w-3 rounded" />
+                                    ))}
+                                </div>
+                                <Skeleton className="h-16 w-full mb-4" />
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                    <Skeleton className="h-12 w-12 rounded-lg" />
+                                    <Skeleton className="h-12 w-12 rounded-lg" />
+                                </div>
+                            </div>
+                            <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/50 flex items-center justify-between">
+                                <Skeleton className="h-3 w-20" />
+                                <div className="flex gap-2">
+                                    <Skeleton className="h-8 w-8 rounded-lg" />
+                                    <Skeleton className="h-8 w-8 rounded-lg" />
+                                </div>
+                            </div>
+                        </div>
+                    ))
                 ) : paginatedReviews.length > 0 ? paginatedReviews.map((review) => (
                     <div key={review.id} className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
                         <div>
@@ -231,7 +259,7 @@ export default function ReviewsPage() {
                                     <Star
                                         key={i}
                                         size={12}
-                                        className={i < review.rating ? "fill-black text-black dark:fill-white dark:text-white" : "text-zinc-200 dark:text-zinc-700"}
+                                        className={i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-zinc-200 dark:text-zinc-700"}
                                     />
                                 ))}
                             </div>
@@ -276,17 +304,17 @@ export default function ReviewsPage() {
                             <button
                                 onClick={() => handleToggleApproval(review.id, review.isApproved)}
                                 disabled={togglingId === review.id}
-                                className={`p-2 rounded-lg transition-all cursor-pointer ${review.isApproved ? 'text-zinc-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/10' : 'text-zinc-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/10'}`}
+                                className={`p-2 rounded-lg transition-all cursor-pointer ${review.isApproved ? 'text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 dark:hover:bg-yellow-900/10' : 'text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/10'}`}
                                 title={review.isApproved ? "Unapprove Review" : "Approve Review"}
                             >
-                                {togglingId === review.id ? <Loader2 className="animate-spin" size={18} /> : review.isApproved ? <XCircle size={18} /> : <CheckCircle size={18} />}
+                                {togglingId === review.id ? <LoadingSpinner size="small" /> : review.isApproved ? <XCircle size={18} /> : <CheckCircle size={18} />}
                             </button>
                             <button
                                 onClick={() => handleDeleteClick(review.id)}
                                 disabled={deletingId === review.id}
                                 className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-all cursor-pointer"
                             >
-                                {deletingId === review.id ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
+                                {deletingId === review.id ? <LoadingSpinner size="small" /> : <Trash2 size={18} />}
                             </button>
                         </div>
                     </div>

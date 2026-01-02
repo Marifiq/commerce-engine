@@ -91,7 +91,7 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
   const user = await prisma.user.findUnique({
     where: { email },
   });
-  
+
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return next(new AppError("Incorrect email or password", 401));
   }
@@ -153,14 +153,14 @@ export const restrictTo = (...roles: string[]) => {
       console.log("[restrictTo] Allowed roles:", roles);
       console.log("[restrictTo] User:", req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : "null");
     }
-    
+
     // Check if user exists
     if (!req.user) {
       return next(
         new AppError("You are not logged in! Please log in to get access.", 401)
       );
     }
-    
+
     // Check if user has a role
     const userRole = req.user.role;
     if (!userRole) {
@@ -171,23 +171,23 @@ export const restrictTo = (...roles: string[]) => {
         new AppError("You do not have permission to do this action. User role is missing.", 403)
       );
     }
-    
+
     // Check if user's role is in the allowed roles (case-insensitive comparison)
     const normalizedUserRole = userRole.toLowerCase().trim();
     const normalizedAllowedRoles = roles.map(role => role.toLowerCase().trim());
-    
+
     if (process.env.NODE_ENV === "development") {
       console.log("[restrictTo] Normalized user role:", normalizedUserRole);
       console.log("[restrictTo] Normalized allowed roles:", normalizedAllowedRoles);
       console.log("[restrictTo] Match:", normalizedAllowedRoles.includes(normalizedUserRole));
     }
-    
+
     if (!normalizedAllowedRoles.includes(normalizedUserRole)) {
       return next(
         new AppError("You do not have permission to do this action", 403)
       );
     }
-    
+
     next();
   };
 };

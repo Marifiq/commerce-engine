@@ -11,7 +11,6 @@ import {
   CheckCircle,
   Clock,
   X,
-  Loader2,
   ChevronDown,
   Edit2,
 } from "lucide-react";
@@ -27,6 +26,7 @@ interface Order {
   createdAt: string;
   shippingAddress: string;
   paymentMethod: string;
+  totalAmount?: number;
 }
 
 const statusColors: Record<string, string> = {
@@ -41,6 +41,9 @@ const statusColors: Record<string, string> = {
 import { useToast } from "@/app/components/ToastContext";
 import { Pagination } from "@/app/components/Pagination";
 import { EditOrderModal } from "@/app/components/EditOrderModal";
+import { resolveImageUrl } from "../../../utils/imageUtils";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import Skeleton from "../../components/ui/Skeleton";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -58,6 +61,8 @@ export default function OrdersPage() {
 
   const searchParams = useSearchParams();
   const initialOrderId = searchParams.get("id");
+
+  const [viewingId, setViewingId] = useState<string | number | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -96,6 +101,7 @@ export default function OrdersPage() {
   };
 
   const fetchOrderDetails = async (orderId: string | number) => {
+    setViewingId(orderId);
     try {
       const res = await apiFetch(`/admin/orders/${orderId}`);
       const order = res.data.order;
@@ -113,6 +119,8 @@ export default function OrdersPage() {
     } catch (error) {
       console.error("Failed to fetch order details:", error);
       showToast("Failed to load order details", "error");
+    } finally {
+      setViewingId(null);
     }
   };
 
@@ -282,20 +290,33 @@ export default function OrdersPage() {
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
-                    <Loader2
-                      className="animate-spin mx-auto text-black dark:text-white"
-                      size={32}
-                    />
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={index} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-5 w-20" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-4 w-24" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-5 w-16" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Skeleton className="h-8 w-8 rounded-lg ml-auto" />
+                    </td>
+                  </tr>
+                ))
               ) : paginatedOrders.length > 0 ? (
                 paginatedOrders.map((order) => (
                   <tr
                     key={order.id}
                     className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
-                    onClick={() => fetchOrderDetails(order.id)}
+                    onClick={() => {
+                      if (viewingId !== order.id) fetchOrderDetails(order.id);
+                    }}
                   >
                     <td className="px-6 py-4 font-medium text-zinc-900 dark:text-white">
                       #{order.id.toString().slice(-6)}
@@ -310,10 +331,7 @@ export default function OrdersPage() {
                       <div className="relative inline-block">
                         {updatingId === order.id ? (
                           <div className="flex items-center gap-2 text-sm text-zinc-500">
-                            <Loader2
-                              className="animate-spin text-black dark:text-white"
-                              size={14}
-                            />{" "}
+                            <LoadingSpinner size="small" />{" "}
                             Updating...
                           </div>
                         ) : (
@@ -323,11 +341,10 @@ export default function OrdersPage() {
                               e.stopPropagation();
                               handleUpdateStatus(order.id, e.target.value);
                             }}
-                            className={`appearance-none px-4 py-1.5 pr-8 rounded-full text-[10px] font-black uppercase tracking-widest cursor-pointer border-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all duration-500 ease-in-out ${
-                              statusColors[
-                                (order.status || "pending").toLowerCase()
-                              ] || statusColors.pending
-                            }`}
+                            className={`appearance-none px-4 py-1.5 pr-8 rounded-full text-[10px] font-black uppercase tracking-widest cursor-pointer border-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all duration-500 ease-in-out ${statusColors[
+                              (order.status || "pending").toLowerCase()
+                            ] || statusColors.pending
+                              }`}
                           >
                             <option value="pending">Pending</option>
                             <option value="shipped">Shipped</option>
@@ -356,7 +373,8 @@ export default function OrdersPage() {
                             e.stopPropagation();
                             fetchOrderDetails(order.id);
                           }}
-                          className="p-2 text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
+                          disabled={viewingId === order.id}
+                          className="p-2 text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer disabled:bg-zinc-100 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed"
                           title="View Details"
                         >
                           <Eye size={18} />
@@ -414,11 +432,10 @@ export default function OrdersPage() {
               {/* Summary Section */}
               <div className="flex items-center justify-between">
                 <div
-                  className={`px-4 py-2 rounded-2xl font-bold text-sm transition-all duration-500 ease-in-out ${
-                    statusColors[
-                      (selectedOrder.status || "pending").toLowerCase()
-                    ] || statusColors.pending
-                  }`}
+                  className={`px-4 py-2 rounded-2xl font-bold text-sm transition-all duration-500 ease-in-out ${statusColors[
+                    (selectedOrder.status || "pending").toLowerCase()
+                  ] || statusColors.pending
+                    }`}
                 >
                   {(selectedOrder.status || "pending").toUpperCase()}
                 </div>
@@ -484,7 +501,7 @@ export default function OrdersPage() {
                     >
                       <div className="h-16 w-16 rounded-xl bg-white dark:bg-zinc-800 overflow-hidden flex items-center justify-center">
                         <img
-                          src={item.product?.image || "/images/placeholder.jpg"}
+                          src={resolveImageUrl(item.product?.image || '') || "/images/placeholder.jpg"}
                           alt={item.product?.name}
                           className="h-full w-full object-cover"
                         />
@@ -561,6 +578,15 @@ export default function OrdersPage() {
             status: editingOrder.status,
           }}
         />
+      )}
+      {/* Full Screen Loading Overlay */}
+      {viewingId && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/20 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4">
+            <LoadingSpinner size="large" />
+            <p className="text-sm font-bold text-zinc-900 dark:text-white">Loading Order...</p>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Loader2, ShoppingBag } from 'lucide-react';
+import { X, ShoppingBag } from 'lucide-react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
+import LoadingSpinner from './ui/LoadingSpinner';
 
 interface CreateOrderModalProps {
     isOpen: boolean;
@@ -140,7 +141,7 @@ export function CreateOrderModal({ isOpen, onClose, onCreate, cartTotal, itemCou
                                     disabled={isSubmitting}
                                     className="flex-1 px-4 py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-black/5 cursor-pointer hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
-                                    {isSubmitting && <Loader2 className="animate-spin text-white dark:text-black" size={14} />}
+                                    {isSubmitting && <LoadingSpinner size="small" />}
                                     <ShoppingBag size={14} />
                                     Create Order
                                 </button>

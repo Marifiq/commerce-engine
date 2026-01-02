@@ -28,6 +28,16 @@ export interface Category {
 }
 
 // --- Product Types ---
+export interface ProductMedia {
+    id: number;
+    productId: number;
+    url: string;
+    type: "image" | "video";
+    isPrimary: boolean;
+    order: number;
+    createdAt: string;
+}
+
 export interface Product {
     id: number;
     name: string;
@@ -39,6 +49,7 @@ export interface Product {
     hasDiscount?: boolean;
     category: string;
     image: string;
+    media?: ProductMedia[];
     section?: string;
     stock: number;
     rating?: number;
@@ -53,7 +64,8 @@ export interface Product {
  * Frontend state representation of a cart item
  */
 export interface CartItem {
-    id: number;
+    id: number | string; // Guest items might have temp IDs
+    productId: number;
     name: string;
     price: number;
     image: string;
@@ -124,6 +136,14 @@ export interface Order {
 }
 
 // --- Offer Types ---
+export interface OfferProduct {
+    id: number;
+    offerId: number;
+    productId: number;
+    product?: Product;
+    createdAt: string;
+}
+
 export interface Offer {
     id: number;
     title: string;
@@ -136,6 +156,7 @@ export interface Offer {
     endDate?: string | null;
     isActive: boolean;
     showBanner: boolean;
+    products?: OfferProduct[] | number[];
     createdAt: string;
     updatedAt: string;
 }

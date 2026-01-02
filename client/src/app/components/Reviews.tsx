@@ -11,7 +11,7 @@ import ReviewsCarouselModal from './ReviewsCarouselModal';
 import { formatDate } from '../../utils/dateUtils';
 
 if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
+    gsap.registerPlugin(ScrollTrigger);
 }
 
 const AVATAR_COLORS = [
@@ -38,7 +38,7 @@ function StarRating({ rating }: { rating: number }) {
                 <Star
                     key={i}
                     size={14}
-                    className={`${i < rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-200 dark:text-zinc-700'}`}
+                    className={`${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-zinc-200 dark:text-zinc-700'}`}
                 />
             ))}
         </div>
@@ -140,7 +140,7 @@ export default function Reviews() {
                     reviewCards.forEach((card, index) => {
                         gsap.set(card, { transformOrigin: 'center center' });
                         const cardElement = card as HTMLElement;
-                        
+
                         cardElement.addEventListener('mouseenter', () => {
                             gsap.to(card, {
                                 scale: 1.02,
@@ -149,7 +149,7 @@ export default function Reviews() {
                                 ease: 'power2.out'
                             });
                         });
-                        
+
                         cardElement.addEventListener('mouseleave', () => {
                             gsap.to(card, {
                                 scale: 1,
@@ -218,7 +218,7 @@ export default function Reviews() {
     return (
         <section ref={sectionRef} className="bg-white py-24 sm:py-32 dark:bg-black overflow-hidden relative">
             {/* Decorative transition element from BestSellers */}
-            <div 
+            <div
                 ref={transitionLineRef}
                 className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-200 dark:via-zinc-800 to-transparent"
             />
@@ -326,7 +326,7 @@ export default function Reviews() {
                 </div>
 
                 <div ref={buttonRef} className="mt-20 text-center">
-                    <button 
+                    <button
                         onClick={() => setIsCarouselModalOpen(true)}
                         className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.3em] text-black dark:text-white border-b-2 border-black dark:border-white pb-2 hover:gap-4 transition-all cursor-pointer"
                     >
@@ -335,7 +335,7 @@ export default function Reviews() {
                 </div>
             </div>
 
-            <ReviewsCarouselModal 
+            <ReviewsCarouselModal
                 isOpen={isCarouselModalOpen}
                 onClose={() => setIsCarouselModalOpen(false)}
             />

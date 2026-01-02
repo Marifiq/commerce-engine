@@ -32,19 +32,32 @@ model Category {
 }
 
 model Product {
-  id              Int       @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   name            String
   description     String?
   price           Float
   category        String
   image           String
   section         String?
-  stock           Int       @default(0)
-  discountPercent Float?    @default(0)
-  createdAt       DateTime  @default(now())
+  stock           Int            @default(0)
+  discountPercent Float?          @default(0)
+  createdAt       DateTime       @default(now())
   cartItems       CartItem[]
   reviews         Review[]
   orderItems      OrderItem[]
+  media           ProductMedia[]
+  offerProducts   OfferProduct[]
+}
+
+model ProductMedia {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  type      String   // "image" or "video"
+  isPrimary Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 model Cart {
@@ -101,17 +114,29 @@ model Review {
 }
 
 model Offer {
-  id              Int       @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   title           String
   description     String?
   discountPercent Float
-  targetType      String    // "product" or "category"
-  targetId        Int?      // productId or categoryId (null for all products)
-  targetName      String?   // product name or category name for display
+  targetType      String         // "product", "category", or "all"
+  targetId        Int?           // categoryId (null for all products or when using products relation)
+  targetName      String?        // category name for display
   startDate       DateTime?
   endDate         DateTime?
-  isActive        Boolean   @default(true)
-  showBanner      Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  isActive        Boolean        @default(true)
+  showBanner      Boolean        @default(false)
+  products        OfferProduct[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model OfferProduct {
+  id        Int      @id @default(autoincrement())
+  offerId   Int
+  offer     Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([offerId, productId])
 }

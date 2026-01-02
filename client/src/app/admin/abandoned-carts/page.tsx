@@ -6,16 +6,20 @@ import {
     ShoppingCart,
     User as UserIcon,
     Mail,
-    Loader2,
     Search,
     ChevronRight,
     Package,
     ArrowLeft,
     Eye,
-    Send
+    Send,
+    Trash2
 } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { Pagination } from '@/app/components/Pagination';
+import { Modal } from '@/app/components/Modal';
+import Skeleton from '@/app/components/ui/Skeleton';
+import LoadingSpinner from '@/app/components/ui/LoadingSpinner';
+import { resolveImageUrl } from '../../../utils/imageUtils';
 
 interface CartItem {
     id: number;
@@ -48,6 +52,16 @@ export default function AbandonedCartsPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
     const { showToast } = useToast();
+    const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [deleteModal, setDeleteModal] = useState<{
+        isOpen: boolean;
+        userId: number | null;
+        userName: string;
+    }>({
+        isOpen: false,
+        userId: null,
+        userName: ''
+    });
 
     useEffect(() => {
         fetchCarts();
@@ -78,6 +92,36 @@ export default function AbandonedCartsPage() {
         const subject = encodeURIComponent('Complete your purchase at Shirt');
         const body = encodeURIComponent(`Hi ${name},\n\nWe noticed you left some items in your cart. We'd love to help you complete your order!`);
         window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+    };
+
+    const handleDeleteClick = (userId: number, userName: string) => {
+        setDeleteModal({
+            isOpen: true,
+            userId,
+            userName
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        const userId = deleteModal.userId;
+        if (!userId) return;
+
+        setDeleteModal(prev => ({ ...prev, isOpen: false }));
+        setDeletingId(userId);
+        try {
+            await apiFetch(`/admin/users/${userId}/cart`, { method: 'DELETE' });
+            showToast('Cart deleted successfully', 'success');
+            await fetchCarts();
+            // If the deleted cart was selected, clear the selection
+            if (selectedCart?.userId === userId) {
+                setSelectedCart(null);
+            }
+        } catch (error) {
+            console.error('Failed to delete cart:', error);
+            showToast('Failed to delete cart', 'error');
+        } finally {
+            setDeletingId(null);
+        }
     };
 
     const filteredAndSortedCarts = carts
@@ -114,15 +158,6 @@ export default function AbandonedCartsPage() {
         setCurrentPage(1);
     }, [searchTerm, sortBy]);
 
-
-    if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <Loader2 className="w-10 h-10 animate-spin text-black dark:text-white" />
-                <p className="text-zinc-500 font-medium animate-pulse">Loading carts...</p>
-            </div>
-        );
-    }
 
     return (
         <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-8">
@@ -233,7 +268,7 @@ export default function AbandonedCartsPage() {
                                     <div key={item.id} className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center gap-4 hover:border-black dark:hover:border-white transition-all cursor-default group">
                                         <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex-shrink-0">
                                             <img
-                                                src={item.product.image}
+                                                src={resolveImageUrl(item.product.image)}
                                                 alt={item.product.name}
                                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                             />
@@ -273,7 +308,33 @@ export default function AbandonedCartsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                                    {paginatedCarts.length > 0 ? (
+                                    {loading ? (
+                                        Array.from({ length: 5 }).map((_, index) => (
+                                            <tr key={index} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <Skeleton variant="circular" className="h-10 w-10" />
+                                                        <Skeleton className="h-5 w-32" />
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5 hidden sm:table-cell">
+                                                    <Skeleton className="h-4 w-40" />
+                                                </td>
+                                                <td className="px-6 py-5 text-center">
+                                                    <Skeleton className="h-5 w-8 mx-auto" />
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <Skeleton className="h-5 w-16 ml-auto" />
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Skeleton className="h-8 w-8 rounded-lg" />
+                                                        <Skeleton className="h-8 w-8 rounded-lg" />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : paginatedCarts.length > 0 ? (
                                         paginatedCarts.map((cart, index) => (
                                             <tr
                                                 key={index}
@@ -324,6 +385,14 @@ export default function AbandonedCartsPage() {
                                                                 <Send size={18} />
                                                             </button>
                                                         )}
+                                                        <button
+                                                            onClick={() => handleDeleteClick(cart.userId, cart.user?.name || 'Unknown User')}
+                                                            disabled={deletingId === cart.userId}
+                                                            className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors cursor-pointer rounded-lg"
+                                                            title="Delete Cart"
+                                                        >
+                                                            {deletingId === cart.userId ? <LoadingSpinner size="small" /> : <Trash2 size={18} />}
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -350,6 +419,17 @@ export default function AbandonedCartsPage() {
                     />
                 </div>
             )}
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, userId: null, userName: '' })}
+                onConfirm={handleConfirmDelete}
+                title="Delete Cart"
+                message={`Are you sure you want to delete the cart for ${deleteModal.userName}? This action will permanently remove all items from the cart.`}
+                confirmText="Delete Cart"
+                type="danger"
+            />
         </div>
     );
 }

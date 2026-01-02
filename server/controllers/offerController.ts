@@ -8,6 +8,13 @@ import { UserRequest } from "../types.js";
 export const getAllOffers = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
     const offers = await prisma.offer.findMany({
+      include: {
+        products: {
+          include: {
+            product: true,
+          },
+        },
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -68,6 +75,13 @@ export const getOffer = catchAsync(
     const id = parseInt(req.params.id);
     const offer = await prisma.offer.findUnique({
       where: { id },
+      include: {
+        products: {
+          include: {
+            product: true,
+          },
+        },
+      },
     });
 
     if (!offer) {
@@ -93,6 +107,7 @@ export const createOffer = catchAsync(
       targetType,
       targetId,
       targetName,
+      productIds, // Array of product IDs for multiple products
       startDate,
       endDate,
       isActive,
@@ -116,10 +131,36 @@ export const createOffer = catchAsync(
       );
     }
 
-    // If targetType is product or category, validate targetId
-    if (targetType !== "all" && !targetId) {
+    // If targetType is product, validate productIds or targetId
+    if (targetType === "product") {
+      if (productIds && Array.isArray(productIds) && productIds.length > 0) {
+        // Multiple products mode
+        // Validate all products exist
+        const products = await prisma.product.findMany({
+          where: { id: { in: productIds } },
+        });
+        if (products.length !== productIds.length) {
+          return next(new AppError("One or more products not found", 404));
+        }
+      } else if (targetId) {
+        // Single product mode (backward compatibility)
+        const product = await prisma.product.findUnique({
+          where: { id: targetId },
+        });
+        if (!product) {
+          return next(new AppError("Product not found", 404));
+        }
+      } else {
+        return next(
+          new AppError("productIds array or targetId is required when targetType is 'product'", 400)
+        );
+      }
+    }
+
+    // If targetType is category, validate targetId
+    if (targetType === "category" && !targetId) {
       return next(
-        new AppError("targetId is required when targetType is not 'all'", 400)
+        new AppError("targetId is required when targetType is 'category'", 400)
       );
     }
 
@@ -145,22 +186,30 @@ export const createOffer = catchAsync(
       return next(new AppError("startDate must be before endDate", 400));
     }
 
-    // If targetType is product, verify product exists
-    if (targetType === "product" && targetId) {
-      const product = await prisma.product.findUnique({
-        where: { id: targetId },
-      });
-      if (!product) {
-        return next(new AppError("Product not found", 404));
-      }
-      // Apply discount to product
-      await prisma.product.update({
-        where: { id: targetId },
-        data: { discountPercent },
+    // If showBanner is true, set all other offers' showBanner to false (only one global banner)
+    const finalShowBanner = showBanner !== undefined ? showBanner : false;
+    if (finalShowBanner) {
+      await prisma.offer.updateMany({
+        where: {
+          showBanner: true,
+        },
+        data: {
+          showBanner: false,
+        },
       });
     }
 
-    // If targetType is category, verify category exists
+    // Determine which products to apply discount to
+    const productsToUpdate: number[] = [];
+    if (targetType === "product") {
+      if (productIds && Array.isArray(productIds) && productIds.length > 0) {
+        productsToUpdate.push(...productIds);
+      } else if (targetId) {
+        productsToUpdate.push(targetId);
+      }
+    }
+
+    // If targetType is category, verify category exists and apply discount
     if (targetType === "category" && targetId) {
       const category = await prisma.category.findUnique({
         where: { id: targetId },
@@ -179,33 +228,74 @@ export const createOffer = catchAsync(
       }
     }
 
-    // If showBanner is true, set all other offers' showBanner to false (only one global banner)
-    const finalShowBanner = showBanner !== undefined ? showBanner : false;
-    if (finalShowBanner) {
-      await prisma.offer.updateMany({
-        where: {
-          showBanner: true,
-        },
-        data: {
-          showBanner: false,
-        },
-      });
-    }
-
+    // Create offer with products
     const offer = await prisma.offer.create({
       data: {
         title,
         description,
         discountPercent,
         targetType: targetType || "all",
-        targetId: targetId || null,
-        targetName: targetName || null,
+        targetId: targetType === "category" ? targetId : null,
+        targetName: targetType === "category" ? targetName : null,
         startDate: parsedStartDate,
         endDate: parsedEndDate,
         isActive: isActive !== undefined ? isActive : true,
         showBanner: finalShowBanner,
+        products: productsToUpdate.length > 0 ? {
+          create: productsToUpdate.map(productId => ({
+            productId,
+          })),
+        } : undefined,
+      },
+      include: {
+        products: {
+          include: {
+            product: true,
+          },
+        },
       },
     });
+
+    // Apply discount to all products
+    if (productsToUpdate.length > 0) {
+      // Get all active offers for these products to determine max discount
+      const now = new Date();
+      for (const productId of productsToUpdate) {
+        const allActiveOffers = await prisma.offer.findMany({
+          where: {
+            isActive: true,
+            targetType: "product",
+            products: {
+              some: {
+                productId,
+              },
+            },
+            AND: [
+              {
+                OR: [
+                  { startDate: null },
+                  { startDate: { lte: now } },
+                ],
+              },
+              {
+                OR: [
+                  { endDate: null },
+                  { endDate: { gte: now } },
+                ],
+              },
+            ],
+          },
+        });
+        
+        const maxDiscount = Math.max(
+          ...allActiveOffers.map((o) => o.discountPercent)
+        );
+        await prisma.product.update({
+          where: { id: productId },
+          data: { discountPercent: maxDiscount },
+        });
+      }
+    }
 
     res.status(201).json({
       status: "success",
@@ -227,6 +317,7 @@ export const updateOffer = catchAsync(
       targetType,
       targetId,
       targetName,
+      productIds, // Array of product IDs for multiple products
       startDate,
       endDate,
       isActive,
@@ -235,6 +326,9 @@ export const updateOffer = catchAsync(
 
     const offer = await prisma.offer.findUnique({
       where: { id },
+      include: {
+        products: true,
+      },
     });
 
     if (!offer) {
@@ -287,81 +381,110 @@ export const updateOffer = catchAsync(
     const finalTargetType = targetType || offer.targetType;
     const finalTargetId = targetId !== undefined ? targetId : offer.targetId;
 
-    // If offer is being deactivated, check for other active offers before removing discount
-    if (finalTargetType === "product" && finalTargetId) {
-      if (!finalIsActive) {
-        // Check if there are other active offers for this product
-        const now = new Date();
-        const otherActiveOffers = await prisma.offer.findMany({
-          where: {
-            id: { not: id },
-            isActive: true,
-            targetType: "product",
-            targetId: finalTargetId,
-            AND: [
-              {
-                OR: [
-                  { startDate: null },
-                  { startDate: { lte: now } },
-                ],
-              },
-              {
-                OR: [
-                  { endDate: null },
-                  { endDate: { gte: now } },
-                ],
-              },
-            ],
-          },
+    // Handle product updates - get old and new product IDs
+    const oldProductIds = offer.products.map(op => op.productId);
+    let newProductIds: number[] = [];
+    
+    if (finalTargetType === "product") {
+      if (productIds && Array.isArray(productIds) && productIds.length > 0) {
+        newProductIds = productIds;
+        // Validate all products exist
+        const products = await prisma.product.findMany({
+          where: { id: { in: productIds } },
         });
-        
-        // If no other active offers, remove discount; otherwise keep the highest
-        if (otherActiveOffers.length === 0) {
-          await prisma.product.update({
-            where: { id: finalTargetId },
-            data: { discountPercent: 0 },
+        if (products.length !== productIds.length) {
+          return next(new AppError("One or more products not found", 404));
+        }
+      } else if (finalTargetId) {
+        newProductIds = [finalTargetId];
+      }
+    }
+
+    // If offer is being deactivated, check for other active offers before removing discount
+    if (finalTargetType === "product" && oldProductIds.length > 0) {
+      const now = new Date();
+      // Process all old products
+      for (const productId of oldProductIds) {
+        if (!finalIsActive) {
+          // Check if there are other active offers for this product
+          const otherActiveOffers = await prisma.offer.findMany({
+            where: {
+              id: { not: id },
+              isActive: true,
+              targetType: "product",
+              products: {
+                some: {
+                  productId,
+                },
+              },
+              AND: [
+                {
+                  OR: [
+                    { startDate: null },
+                    { startDate: { lte: now } },
+                  ],
+                },
+                {
+                  OR: [
+                    { endDate: null },
+                    { endDate: { gte: now } },
+                  ],
+                },
+              ],
+            },
           });
+          
+          // If no other active offers, remove discount; otherwise keep the highest
+          if (otherActiveOffers.length === 0) {
+            await prisma.product.update({
+              where: { id: productId },
+              data: { discountPercent: 0 },
+            });
+          } else {
+            const maxDiscount = Math.max(
+              ...otherActiveOffers.map((o) => o.discountPercent)
+            );
+            await prisma.product.update({
+              where: { id: productId },
+              data: { discountPercent: maxDiscount },
+            });
+          }
         } else {
+          // Apply the discount (or keep the highest if multiple offers exist)
+          const allActiveOffers = await prisma.offer.findMany({
+            where: {
+              isActive: true,
+              targetType: "product",
+              products: {
+                some: {
+                  productId,
+                },
+              },
+              AND: [
+                {
+                  OR: [
+                    { startDate: null },
+                    { startDate: { lte: now } },
+                  ],
+                },
+                {
+                  OR: [
+                    { endDate: null },
+                    { endDate: { gte: now } },
+                  ],
+                },
+              ],
+            },
+          });
+          
           const maxDiscount = Math.max(
-            ...otherActiveOffers.map((o) => o.discountPercent)
+            ...allActiveOffers.map((o) => o.discountPercent)
           );
           await prisma.product.update({
-            where: { id: finalTargetId },
+            where: { id: productId },
             data: { discountPercent: maxDiscount },
           });
         }
-      } else {
-        // Apply the discount (or keep the highest if multiple offers exist)
-        const now = new Date();
-        const allActiveOffers = await prisma.offer.findMany({
-          where: {
-            isActive: true,
-            targetType: "product",
-            targetId: finalTargetId,
-            AND: [
-              {
-                OR: [
-                  { startDate: null },
-                  { startDate: { lte: now } },
-                ],
-              },
-              {
-                OR: [
-                  { endDate: null },
-                  { endDate: { gte: now } },
-                ],
-              },
-            ],
-          },
-        });
-        
-        const maxDiscount = Math.max(
-          ...allActiveOffers.map((o) => o.discountPercent)
-        );
-        await prisma.product.update({
-          where: { id: finalTargetId },
-          data: { discountPercent: maxDiscount },
-        });
       }
     }
 
@@ -462,18 +585,82 @@ export const updateOffer = catchAsync(
     if (description !== undefined) updateData.description = description;
     if (discountPercent !== undefined) updateData.discountPercent = discountPercent;
     if (targetType) updateData.targetType = targetType;
-    if (targetId !== undefined) updateData.targetId = targetId;
-    if (targetName !== undefined) updateData.targetName = targetName;
+    if (targetId !== undefined) updateData.targetId = targetType === "category" ? targetId : null;
+    if (targetName !== undefined) updateData.targetName = targetType === "category" ? targetName : null;
     if (startDate !== undefined) updateData.startDate = parsedStartDate;
     if (endDate !== undefined) updateData.endDate = parsedEndDate;
     // Explicitly handle boolean values - they can be false
     if (isActive !== undefined) updateData.isActive = Boolean(isActive);
     if (showBanner !== undefined) updateData.showBanner = Boolean(showBanner);
 
+    // Handle product updates
+    if (finalTargetType === "product" && productIds !== undefined) {
+      // Delete old product associations
+      await prisma.offerProduct.deleteMany({
+        where: { offerId: id },
+      });
+      
+      // Create new product associations
+      if (newProductIds.length > 0) {
+        updateData.products = {
+          create: newProductIds.map(productId => ({
+            productId,
+          })),
+        };
+      }
+    }
+
     const updatedOffer = await prisma.offer.update({
       where: { id },
       data: updateData,
+      include: {
+        products: {
+          include: {
+            product: true,
+          },
+        },
+      },
     });
+
+    // Apply discount to new products
+    if (finalTargetType === "product" && newProductIds.length > 0) {
+      const now = new Date();
+      for (const productId of newProductIds) {
+        const allActiveOffers = await prisma.offer.findMany({
+          where: {
+            isActive: true,
+            targetType: "product",
+            products: {
+              some: {
+                productId,
+              },
+            },
+            AND: [
+              {
+                OR: [
+                  { startDate: null },
+                  { startDate: { lte: now } },
+                ],
+              },
+              {
+                OR: [
+                  { endDate: null },
+                  { endDate: { gte: now } },
+                ],
+              },
+            ],
+          },
+        });
+        
+        const maxDiscount = Math.max(
+          ...allActiveOffers.map((o) => o.discountPercent)
+        );
+        await prisma.product.update({
+          where: { id: productId },
+          data: { discountPercent: maxDiscount },
+        });
+      }
+    }
 
     res.status(200).json({
       status: "success",
@@ -491,20 +678,66 @@ export const deleteOffer = catchAsync(
 
     const offer = await prisma.offer.findUnique({
       where: { id },
+      include: {
+        products: true,
+      },
     });
 
     if (!offer) {
       return next(new AppError("Offer not found", 404));
     }
 
-    // Remove discount from product/category if applicable
-    if (offer.targetType === "product" && offer.targetId) {
-      await prisma.product.update({
-        where: { id: offer.targetId },
-        data: { discountPercent: 0 },
-      });
+    // Remove discount from products if applicable
+    if (offer.targetType === "product" && offer.products.length > 0) {
+      const now = new Date();
+      for (const offerProduct of offer.products) {
+        // Check if there are other active offers for this product
+        const otherActiveOffers = await prisma.offer.findMany({
+          where: {
+            id: { not: id },
+            isActive: true,
+            targetType: "product",
+            products: {
+              some: {
+                productId: offerProduct.productId,
+              },
+            },
+            AND: [
+              {
+                OR: [
+                  { startDate: null },
+                  { startDate: { lte: now } },
+                ],
+              },
+              {
+                OR: [
+                  { endDate: null },
+                  { endDate: { gte: now } },
+                ],
+              },
+            ],
+          },
+        });
+        
+        // If no other active offers, remove discount; otherwise keep the highest
+        if (otherActiveOffers.length === 0) {
+          await prisma.product.update({
+            where: { id: offerProduct.productId },
+            data: { discountPercent: 0 },
+          });
+        } else {
+          const maxDiscount = Math.max(
+            ...otherActiveOffers.map((o) => o.discountPercent)
+          );
+          await prisma.product.update({
+            where: { id: offerProduct.productId },
+            data: { discountPercent: maxDiscount },
+          });
+        }
+      }
     }
 
+    // Remove discount from category if applicable
     if (offer.targetType === "category" && offer.targetId) {
       await prisma.category.update({
         where: { id: offer.targetId },

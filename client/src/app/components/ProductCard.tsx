@@ -34,7 +34,10 @@ export default function ProductCard({ id, name, price, originalPrice, discounted
         e.preventDefault();
         e.stopPropagation();
         try {
-            await dispatch(addItemToCart({ productId: id, quantity: 1 })).unwrap();
+            await dispatch(addItemToCart({
+                product: { id, name, price, image, category } as any,
+                quantity: 1
+            })).unwrap();
             showToast('Product added to cart', 'success');
         } catch (error: unknown) {
             // Redux thunk rejectWithValue returns the payload directly (string in our case)

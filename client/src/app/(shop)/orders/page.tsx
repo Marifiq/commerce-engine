@@ -9,7 +9,7 @@ import { orderService } from '../../../services/orderService';
 import { reviewService } from '../../../services/reviewService';
 import { productService } from '../../../services/productService';
 import { Order, Review, Product } from '../../../types';
-import { RootState } from '../../../redux/store';
+import { RootState, AppDispatch } from '../../../redux/store';
 import { addItemToCart } from '../../../redux/features/cartSlice';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ReviewModal from '../../components/ReviewModal';
@@ -17,6 +17,7 @@ import MediaViewer from '../../components/MediaViewer';
 import { Modal } from '../../components/Modal';
 import { useToast } from '../../components/ToastContext';
 import { Film, ExternalLink } from 'lucide-react';
+import { resolveImageUrl } from '../../../utils/imageUtils';
 
 export default function MyOrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -24,13 +25,13 @@ export default function MyOrdersPage() {
     const [loading, setLoading] = useState(true);
     const [reorderingOrderId, setReorderingOrderId] = useState<number | null>(null);
     const [deleteReviewModal, setDeleteReviewModal] = useState<{ isOpen: boolean; reviewId: number | null; productId: number | null }>({ isOpen: false, reviewId: null, productId: null });
-    const [reorderResultModal, setReorderResultModal] = useState<{ 
-        isOpen: boolean; 
-        message: string; 
-        unavailableItems?: Array<{ name: string; category: string; requested: number; available: number }> 
+    const [reorderResultModal, setReorderResultModal] = useState<{
+        isOpen: boolean;
+        message: string;
+        unavailableItems?: Array<{ name: string; category: string; requested: number; available: number }>
     }>({ isOpen: false, message: '' });
     const router = useRouter();
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<AppDispatch>();
     const { currentUser } = useSelector((state: RootState) => state.user);
     const { showToast } = useToast();
 
@@ -149,7 +150,7 @@ export default function MyOrdersPage() {
                     productId: selectedProduct.id
                 });
             }
-            
+
             // Refresh reviews and close modal
             if (currentUser) {
                 const myReviews = await reviewService.getMyReviews();
@@ -175,14 +176,14 @@ export default function MyOrdersPage() {
 
     const handleReorder = async (order: Order) => {
         setReorderingOrderId(order.id);
-        
+
         try {
             // Fetch current product details to check stock
             const productChecks = await Promise.allSettled(
                 order.items.map(item => productService.getProduct(item.productId))
             );
 
-            const availableItems: Array<{ productId: number; quantity: number; name: string; stock: number }> = [];
+            const availableItems: Array<{ product: Product; quantity: number; stock: number }> = [];
             const unavailableItems: Array<{ name: string; category: string; requested: number; available: number }> = [];
 
             // Check stock for each item
@@ -199,17 +200,15 @@ export default function MyOrdersPage() {
                     if (availableStock >= requestedQty) {
                         // Full stock available - add to cart
                         availableItems.push({
-                            productId: item.productId,
+                            product: product,
                             quantity: requestedQty,
-                            name: product.name,
                             stock: availableStock
                         });
                     } else if (availableStock > 0) {
                         // Partial stock available - add what's available but mark as unavailable
                         availableItems.push({
-                            productId: item.productId,
+                            product: product,
                             quantity: availableStock,
-                            name: product.name,
                             stock: availableStock
                         });
                         unavailableItems.push({
@@ -243,21 +242,21 @@ export default function MyOrdersPage() {
             if (availableItems.length > 0) {
                 for (const item of availableItems) {
                     try {
-                        await dispatch(addItemToCart({ 
-                            productId: item.productId, 
-                            quantity: item.quantity 
+                        await dispatch(addItemToCart({
+                            product: item.product,
+                            quantity: item.quantity
                         })).unwrap();
                     } catch (error: any) {
-                        console.error(`Failed to add ${item.name} to cart:`, error);
-                        failedItems.push(item.name);
+                        console.error(`Failed to add ${item.product.name} to cart:`, error);
+                        failedItems.push(item.product.name);
                         // Remove from available items count since it failed
-                        const index = availableItems.findIndex(ai => ai.productId === item.productId);
+                        const index = availableItems.findIndex(ai => ai.product.id === item.product.id);
                         if (index > -1) {
                             // Get product category for the failed item
-                            const failedProduct = order.items.find(oi => oi.productId === item.productId);
+                            const failedProduct = order.items.find(oi => oi.productId === item.product.id);
                             availableItems.splice(index, 1);
                             unavailableItems.push({
-                                name: item.name,
+                                name: item.product.name,
                                 category: failedProduct?.product?.category || 'Uncategorized',
                                 requested: item.quantity,
                                 available: item.stock
@@ -269,7 +268,7 @@ export default function MyOrdersPage() {
 
             // Show feedback message
             let message = '';
-            
+
             if (availableItems.length > 0 && unavailableItems.length === 0) {
                 message = `All items from order #${order.id} have been added to your cart!`;
                 showToast(message, 'success');
@@ -406,7 +405,7 @@ export default function MyOrdersPage() {
                                                         <div className="flex">
                                                             <Link href={`/product/${item.productId}`} className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-black dark:hover:border-white transition-colors cursor-pointer">
                                                                 <img
-                                                                    src={item.product?.image || '/images/placeholder.jpg'}
+                                                                    src={resolveImageUrl(item.product?.image || '') || '/images/placeholder.jpg'}
                                                                     alt={item.product?.name}
                                                                     className="h-full w-full object-cover object-center"
                                                                 />
@@ -570,7 +569,7 @@ export default function MyOrdersPage() {
                                                     {item.name}
                                                 </p>
                                                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                                    {item.available === 0 
+                                                    {item.available === 0
                                                         ? `Out of stock (requested: ${item.requested})`
                                                         : `Only ${item.available} available (requested: ${item.requested})`
                                                     }

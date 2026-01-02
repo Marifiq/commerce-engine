@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { apiFetch } from "../../../utils/api";
 import {
   Plus,
@@ -8,16 +8,22 @@ import {
   Edit2,
   Trash2,
   X,
-  Loader2,
   Tag,
   Calendar,
   ToggleLeft,
   ToggleRight,
+  ChevronDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { Offer, Product, Category } from "../../../types";
 import { useToast } from "@/app/components/ToastContext";
 import { Modal } from "@/app/components/Modal";
 import { Pagination } from "@/app/components/Pagination";
+import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
+import Skeleton from "@/app/components/ui/Skeleton";
+import { resolveImageUrl } from "../../../utils/imageUtils";
+
+type SortOption = 'name-asc' | 'name-desc' | 'category-asc' | 'category-desc' | 'none';
 
 export default function OffersPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -55,6 +61,14 @@ export default function OffersPage() {
     showBanner: false,
   });
 
+  // Product selection states
+  const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [sortOption, setSortOption] = useState<SortOption>("none");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     fetchOffers();
     fetchProducts();
@@ -91,6 +105,22 @@ export default function OffersPage() {
     }
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isProductDropdownOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProductDropdownOpen(false);
+      }
+    };
+
+    if (isProductDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isProductDropdownOpen]);
+
   const handleOpenModal = (offer: Offer | null = null) => {
     if (offer) {
       setEditingOffer(offer);
@@ -110,6 +140,15 @@ export default function OffersPage() {
         isActive: offer.isActive,
         showBanner: offer.showBanner,
       });
+      // Load selected products from offer
+      if (offer.products && Array.isArray(offer.products)) {
+        const productIds = offer.products.map((op: any) => 
+          typeof op === 'object' && op.productId ? op.productId : op
+        );
+        setSelectedProductIds(productIds);
+      } else {
+        setSelectedProductIds([]);
+      }
     } else {
       setEditingOffer(null);
       setFormData({
@@ -124,7 +163,12 @@ export default function OffersPage() {
         isActive: true,
         showBanner: false,
       });
+      setSelectedProductIds([]);
     }
+    setIsProductDropdownOpen(false);
+    setProductSearchTerm("");
+    setSelectedCategory("all");
+    setSortOption("none");
     setIsModalOpen(true);
   };
 
@@ -132,18 +176,31 @@ export default function OffersPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const payload = {
+      const payload: any = {
         title: formData.title,
         description: formData.description || null,
         discountPercent: formData.discountPercent,
         targetType: formData.targetType,
-        targetId: formData.targetType === "all" ? null : formData.targetId,
-        targetName: formData.targetName || null,
         startDate: formData.startDate || null,
         endDate: formData.endDate || null,
-        isActive: Boolean(formData.isActive), // Explicitly convert to boolean
-        showBanner: Boolean(formData.showBanner), // Explicitly convert to boolean
+        isActive: Boolean(formData.isActive),
+        showBanner: Boolean(formData.showBanner),
       };
+
+      if (formData.targetType === "product") {
+        if (selectedProductIds.length > 0) {
+          payload.productIds = selectedProductIds;
+        } else {
+          showToast("Please select at least one product", "error");
+          setSubmitting(false);
+          return;
+        }
+      } else if (formData.targetType === "category") {
+        payload.targetId = formData.targetId;
+        payload.targetName = formData.targetName || null;
+      } else {
+        // "all" - no additional fields needed
+      }
 
       if (editingOffer) {
         await apiFetch(`/offers/${editingOffer.id}`, {
@@ -201,6 +258,9 @@ export default function OffersPage() {
       targetId: null,
       targetName: "",
     });
+    if (targetType !== "product") {
+      setSelectedProductIds([]);
+    }
   };
 
   const handleTargetSelect = (targetId: number, targetName: string) => {
@@ -209,6 +269,59 @@ export default function OffersPage() {
       targetId,
       targetName,
     });
+  };
+
+  const handleProductToggle = (productId: number) => {
+    setSelectedProductIds(prev => {
+      if (prev.includes(productId)) {
+        return prev.filter(id => id !== productId);
+      } else {
+        return [...prev, productId];
+      }
+    });
+  };
+
+  const handleRemoveProduct = (productId: number) => {
+    setSelectedProductIds(prev => prev.filter(id => id !== productId));
+  };
+
+  // Filter and sort products for dropdown
+  const getFilteredProducts = () => {
+    let filtered = [...products];
+
+    // Filter by category
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(product => product.category === selectedCategory);
+    }
+
+    // Filter by search term
+    if (productSearchTerm) {
+      const search = productSearchTerm.toLowerCase();
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(search) ||
+        product.category?.toLowerCase().includes(search)
+      );
+    }
+
+    // Sort
+    if (sortOption !== "none") {
+      filtered = [...filtered].sort((a, b) => {
+        switch (sortOption) {
+          case 'name-asc':
+            return a.name.localeCompare(b.name);
+          case 'name-desc':
+            return b.name.localeCompare(a.name);
+          case 'category-asc':
+            return (a.category || '').localeCompare(b.category || '');
+          case 'category-desc':
+            return (b.category || '').localeCompare(a.category || '');
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return filtered;
   };
 
   const filteredOffers = offers.filter((offer) =>
@@ -227,14 +340,6 @@ export default function OffersPage() {
     if (offer.endDate && new Date(offer.endDate) < now) return false;
     return true;
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-black dark:text-white" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -299,7 +404,33 @@ export default function OffersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {paginatedOffers.length > 0 ? (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={index} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-5 w-32" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-5 w-16" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-4 w-24" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-4 w-28" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : paginatedOffers.length > 0 ? (
                 paginatedOffers.map((offer) => {
                   const active = isOfferActive(offer);
                   return (
@@ -422,7 +553,7 @@ export default function OffersPage() {
       {/* Create/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-6 py-4 flex items-center justify-between">
               <h2 className="text-xl font-black uppercase tracking-tighter text-black dark:text-white">
                 {editingOffer ? "Edit Offer" : "Create Offer"}
@@ -504,10 +635,183 @@ export default function OffersPage() {
                 </div>
               </div>
 
-              {formData.targetType !== "all" && (
+              {formData.targetType === "product" && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Select Products *
+                  </label>
+                  
+                  {/* Selected Products Display */}
+                  {selectedProductIds.length > 0 && (
+                    <div className="mb-3 space-y-2">
+                      {selectedProductIds.map(productId => {
+                        const product = products.find(p => p.id === productId);
+                        if (!product) return null;
+                        return (
+                          <div
+                            key={productId}
+                            className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800"
+                          >
+                            <div className="h-12 w-12 rounded-lg bg-white dark:bg-zinc-800 overflow-hidden flex items-center justify-center shrink-0">
+                              <img
+                                src={resolveImageUrl(product.image)}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-zinc-900 dark:text-white truncate text-sm">
+                                {product.name}
+                              </div>
+                              <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                                {product.category || 'N/A'}
+                              </div>
+                              <div className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">
+                                ${product.price.toFixed(2)} • Stock: {product.stock || 0}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveProduct(productId)}
+                              className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-all cursor-pointer"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Product Selection Dropdown */}
+                  <div ref={dropdownRef} className="relative w-full">
+                    <button
+                      type="button"
+                      onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none cursor-pointer text-sm font-medium flex items-center gap-3 min-h-[42px]"
+                    >
+                      <span className="text-zinc-500">Select products...</span>
+                      <ChevronDown
+                        size={16}
+                        className={`text-zinc-400 shrink-0 transition-transform ml-auto ${isProductDropdownOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {isProductDropdownOpen && (
+                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl max-h-[500px] overflow-hidden flex flex-col">
+                        {/* Search */}
+                        <div className="p-2 border-b border-zinc-200 dark:border-zinc-800">
+                          <div className="relative mb-2">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                            <input
+                              type="text"
+                              placeholder="Search products..."
+                              value={productSearchTerm}
+                              onChange={(e) => setProductSearchTerm(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none"
+                            />
+                          </div>
+
+                          {/* Filters */}
+                          <div className="grid grid-cols-2 gap-2">
+                            {/* Category Filter */}
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1 uppercase tracking-widest">
+                                Category
+                              </label>
+                              <select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full px-2 py-1.5 text-xs rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none cursor-pointer"
+                              >
+                                <option value="all">All Categories</option>
+                                {categories.map(category => (
+                                  <option key={category.id} value={category.name}>
+                                    {category.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Sort */}
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1 uppercase tracking-widest">
+                                Sort
+                              </label>
+                              <div className="relative">
+                                <ArrowUpDown className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400" size={12} />
+                                <select
+                                  value={sortOption}
+                                  onChange={(e) => setSortOption(e.target.value as SortOption)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full pl-7 pr-2 py-1.5 text-xs rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none cursor-pointer"
+                                >
+                                  <option value="none">No Sort</option>
+                                  <option value="name-asc">Name (A-Z)</option>
+                                  <option value="name-desc">Name (Z-A)</option>
+                                  <option value="category-asc">Category (A-Z)</option>
+                                  <option value="category-desc">Category (Z-A)</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Product List */}
+                        <div className="overflow-y-auto max-h-64">
+                          {getFilteredProducts().length > 0 ? (
+                            getFilteredProducts().map(product => (
+                              <div
+                                key={product.id}
+                                onClick={() => handleProductToggle(product.id)}
+                                className={`p-3 flex items-center gap-3 cursor-pointer transition-colors ${
+                                  selectedProductIds.includes(product.id)
+                                    ? 'bg-zinc-100 dark:bg-zinc-800'
+                                    : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                                }`}
+                              >
+                                <div className="h-12 w-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0">
+                                  <img
+                                    src={resolveImageUrl(product.image)}
+                                    alt={product.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-zinc-900 dark:text-white truncate text-sm">
+                                    {product.name}
+                                  </div>
+                                  <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                                    {product.category || 'N/A'}
+                                  </div>
+                                  <div className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">
+                                    ${product.price.toFixed(2)} • Stock: {product.stock || 0}
+                                  </div>
+                                </div>
+                                {selectedProductIds.includes(product.id) && (
+                                  <div className="h-2 w-2 rounded-full bg-black dark:bg-white shrink-0"></div>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-4 text-center text-sm text-zinc-500">
+                              No products found
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {formData.targetType === "category" && (
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Select {formData.targetType === "product" ? "Product" : "Category"}
+                    Select Category *
                   </label>
                   <select
                     required
@@ -515,24 +819,16 @@ export default function OffersPage() {
                     value={formData.targetId || ""}
                     onChange={(e) => {
                       const id = parseInt(e.target.value);
-                      const items =
-                        formData.targetType === "product" ? products : categories;
-                      const item = items.find((i) => i.id === id);
-                      handleTargetSelect(id, item?.name || "");
+                      const category = categories.find((c) => c.id === id);
+                      handleTargetSelect(id, category?.name || "");
                     }}
                   >
-                    <option value="">Select {formData.targetType}</option>
-                    {formData.targetType === "product"
-                      ? products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))
-                      : categories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
+                    <option value="">Select category</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
@@ -623,7 +919,7 @@ export default function OffersPage() {
                   disabled={submitting}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest text-xs transition-colors shadow-lg shadow-black/5 disabled:opacity-50 cursor-pointer hover:opacity-90"
                 >
-                  {submitting && <Loader2 className="animate-spin" size={18} />}
+                  {submitting && <LoadingSpinner size="small" />}
                   {editingOffer ? "Update Offer" : "Create Offer"}
                 </button>
               </div>

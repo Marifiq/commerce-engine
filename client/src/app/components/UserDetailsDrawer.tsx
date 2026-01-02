@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AddToCartModal } from './AddToCartModal';
 import { CreateOrderModal } from './CreateOrderModal';
+import { resolveImageUrl } from '../../utils/imageUtils';
 
 interface UserDetailsDrawerProps {
     isOpen: boolean;
@@ -125,8 +126,8 @@ export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart,
                             </div>
                             <div className="space-y-3">
                                 {data.orders.length > 0 ? data.orders.map((order: any) => (
-                                    <div 
-                                        key={order.id} 
+                                    <div
+                                        key={order.id}
                                         onClick={() => router.push(`/admin/orders?id=${order.id}`)}
                                         className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between group hover:border-black dark:hover:border-white transition-all cursor-pointer"
                                     >
@@ -190,7 +191,7 @@ export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart,
                                 {data.cart?.items && data.cart.items.length > 0 ? data.cart.items.map((item: any) => (
                                     <div key={item.id} className="flex items-center gap-4 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 group">
                                         <div className="h-12 w-12 rounded-xl overflow-hidden bg-white dark:bg-zinc-800">
-                                            <img src={item.product?.image} className="h-full w-full object-cover" alt="" />
+                                            <img src={resolveImageUrl(item.product?.image)} className="h-full w-full object-cover" alt="" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-zinc-900 dark:text-white text-sm truncate">{item.product?.name}</p>

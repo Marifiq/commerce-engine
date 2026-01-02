@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Search, Plus } from 'lucide-react';
+import { X, Search, Plus, ArrowUpDown } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
+import { resolveImageUrl } from '../../utils/imageUtils';
+import { Category } from '../../types';
+import LoadingSpinner from './ui/LoadingSpinner';
 
 interface Product {
     id: number;
@@ -10,7 +13,10 @@ interface Product {
     price: number;
     category: string;
     image: string;
+    stock?: number;
 }
+
+type SortOption = 'name-asc' | 'name-desc' | 'category-asc' | 'category-desc' | 'price-asc' | 'price-desc' | 'none';
 
 interface AddToCartModalProps {
     isOpen: boolean;
@@ -21,8 +27,11 @@ interface AddToCartModalProps {
 
 export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModalProps) {
     const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [sortBy, setSortBy] = useState<SortOption>('none');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [quantity, setQuantity] = useState(1);
     const [submitting, setSubmitting] = useState(false);
@@ -30,6 +39,7 @@ export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModa
     useEffect(() => {
         if (isOpen) {
             fetchProducts();
+            fetchCategories();
         }
     }, [isOpen]);
 
@@ -45,6 +55,15 @@ export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModa
         }
     };
 
+    const fetchCategories = async () => {
+        try {
+            const res = await apiFetch('/categories');
+            setCategories(res.data.data || []);
+        } catch (error) {
+            console.error('Failed to fetch categories:', error);
+        }
+    };
+
     const handleSubmit = async () => {
         if (!selectedProduct) return;
 
@@ -56,6 +75,8 @@ export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModa
             setSelectedProduct(null);
             setQuantity(1);
             setSearchTerm('');
+            setSelectedCategory('all');
+            setSortBy('none');
         } catch (error) {
             console.error('Failed to add to cart:', error);
         } finally {
@@ -63,10 +84,35 @@ export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModa
         }
     };
 
-    const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter products by search term and category
+    let filteredProducts = products.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.category.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
+
+    // Sort products
+    if (sortBy !== 'none') {
+        filteredProducts = [...filteredProducts].sort((a, b) => {
+            switch (sortBy) {
+                case 'name-asc':
+                    return a.name.localeCompare(b.name);
+                case 'name-desc':
+                    return b.name.localeCompare(a.name);
+                case 'category-asc':
+                    return a.category.localeCompare(b.category);
+                case 'category-desc':
+                    return b.category.localeCompare(a.category);
+                case 'price-asc':
+                    return a.price - b.price;
+                case 'price-desc':
+                    return b.price - a.price;
+                default:
+                    return 0;
+            }
+        });
+    }
 
     if (!isOpen) return null;
 
@@ -87,22 +133,70 @@ export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModa
                 </div>
 
                 <div className="p-6 space-y-4 overflow-y-auto flex-1">
-                    {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search products..."
-                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                    {/* Search and Filters */}
+                    <div className="space-y-3">
+                        {/* Search */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search products..."
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Category Filter and Sort */}
+                        <div className="grid grid-cols-2 gap-3">
+                            {/* Category Filter */}
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1.5 uppercase tracking-widest">
+                                    Filter by Category
+                                </label>
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none cursor-pointer text-sm"
+                                >
+                                    <option value="all">All Categories</option>
+                                    {categories.map(category => (
+                                        <option key={category.id} value={category.name}>
+                                            {category.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Sort */}
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1.5 uppercase tracking-widest">
+                                    Sort By
+                                </label>
+                                <div className="relative">
+                                    <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value as SortOption)}
+                                        className="w-full pl-10 pr-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none cursor-pointer text-sm"
+                                    >
+                                        <option value="none">No Sort</option>
+                                        <option value="name-asc">Name (A-Z)</option>
+                                        <option value="name-desc">Name (Z-A)</option>
+                                        <option value="category-asc">Category (A-Z)</option>
+                                        <option value="category-desc">Category (Z-A)</option>
+                                        <option value="price-asc">Price (Low to High)</option>
+                                        <option value="price-desc">Price (High to Low)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Product List */}
                     {loading ? (
                         <div className="py-12 flex justify-center">
-                            <Loader2 className="animate-spin text-black dark:text-white" size={32} />
+                            <LoadingSpinner size="large" />
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
@@ -117,14 +211,19 @@ export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModa
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className="h-16 w-16 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0">
-                                            <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                                            <img src={resolveImageUrl(product.image)} alt={product.name} className="h-full w-full object-cover" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-bold text-zinc-900 dark:text-white truncate">{product.name}</h3>
-                                            <p className="text-sm text-zinc-500">{product.category}</p>
+                                            <p className="text-sm text-zinc-500 dark:text-zinc-400 capitalize">{product.category}</p>
+                                            {product.stock !== undefined && (
+                                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                                    Stock: {product.stock}
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-black text-zinc-900 dark:text-white">${product.price}</p>
+                                            <p className="font-black text-zinc-900 dark:text-white">${product.price.toFixed(2)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -165,7 +264,7 @@ export function AddToCartModal({ isOpen, onClose, onAdd, userId }: AddToCartModa
                         disabled={!selectedProduct || submitting}
                         className="flex-1 px-4 py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-black/5 cursor-pointer hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                        {submitting && <Loader2 className="animate-spin text-white dark:text-black" size={14} />}
+                        {submitting && <LoadingSpinner size="small" />}
                         <Plus size={14} />
                         Add to Cart
                     </button>

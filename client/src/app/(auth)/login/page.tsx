@@ -8,6 +8,7 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { login, clearError } from '../../../redux/features/userSlice';
+import { mergeGuestCart } from '../../../redux/features/cartSlice';
 import { RootState, AppDispatch } from '../../../redux/store';
 
 
@@ -30,9 +31,20 @@ export default function LoginPage() {
         validationSchema,
         onSubmit: async (values) => {
             dispatch(clearError());
-            const resultAction = await dispatch(login(values));
-            
+            const trimmedValues = {
+                email: values.email.trim(),
+                password: values.password // Don't trim password usually, but for this specific issue let's check. Actually, passwords *can* have spaces, but usually not at start/end for simple apps. Let's just trim email.
+            };
+            // Actually, if the user copy-pasted 'adminPassword ', they might want it trimmed if it was accidental.
+            // But strict password handling says don't trim. However, for debugging this specific "I can't login" case...
+            // Let's stick to trimming EMAIL only for now.
+
+            // Wait, checking the user's password 'adminPassword'. No spaces.
+
+            const resultAction = await dispatch(login({ ...values, email: values.email.trim() }));
+
             if (login.fulfilled.match(resultAction)) {
+                await dispatch(mergeGuestCart());
                 router.push('/');
             }
         },

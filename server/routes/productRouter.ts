@@ -21,15 +21,15 @@ router.use(authController.restrictTo("admin"));
 
 router.post(
   "/",
-  productController.uploadProductImage,
-  productController.resizeProductImage,
+  productController.uploadProductMedia,
+  productController.processProductMedia,
   productController.createProduct
 );
 
 router.patch(
   "/:id",
-  productController.uploadProductImage,
-  productController.resizeProductImage,
+  productController.uploadProductMedia,
+  productController.processProductMedia,
   productController.updateProduct
 );
 

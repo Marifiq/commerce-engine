@@ -158,7 +158,7 @@ export const updateOrder = catchAsync(async (req: UserRequest, res: Response, ne
   }
 
   // Use transaction to ensure data consistency
-  const updatedOrder = await prisma.$transaction(async (tx) => {
+  const updatedOrder = await prisma.$transaction(async (tx: any) => {
     // If items are being updated
     if (items && Array.isArray(items)) {
       // Step 1: Fetch all products that will be involved to get current stock
@@ -307,6 +307,8 @@ export const updateOrder = catchAsync(async (req: UserRequest, res: Response, ne
     });
 
     return updated;
+  }, {
+    timeout: 20000
   });
 
   res.status(200).json({
@@ -587,6 +589,40 @@ export const deleteCartItem = catchAsync(async (req: UserRequest, res: Response,
   });
 });
 
+// Delete entire cart (admin)
+export const deleteCart = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
+  const userId = parseInt(req.params.id);
+
+  if (isNaN(userId)) {
+    return next(new AppError("Invalid user ID", 400));
+  }
+
+  // Find the cart by userId
+  const cart = await prisma.cart.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+
+  if (!cart) {
+    return next(new AppError("Cart not found", 404));
+  }
+
+  // Delete all cart items first
+  await prisma.cartItem.deleteMany({
+    where: { cartId: cart.id },
+  });
+
+  // Delete the cart
+  await prisma.cart.delete({
+    where: { userId },
+  });
+
+  res.status(204).json({
+    status: "success",
+    data: null,
+  });
+});
+
 // Create order for user (admin)
 export const createUserOrder = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
   const userId = parseInt(req.params.id);
@@ -704,6 +740,11 @@ export const createUserOrder = catchAsync(async (req: UserRequest, res: Response
 // Get all carts (admin)
 export const getAllCarts = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
   const carts = await prisma.cart.findMany({
+    where: {
+      items: {
+        some: {},
+      },
+    },
     include: {
       user: {
         select: {

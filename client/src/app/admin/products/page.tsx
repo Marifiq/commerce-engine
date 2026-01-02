@@ -8,15 +8,20 @@ import {
   Edit2,
   Trash2,
   X,
-  Loader2,
   Image as ImageIcon,
   CheckCircle,
+  ChevronUp,
+  ChevronDown,
+  Video,
+  Star,
 } from "lucide-react";
 import { Product, Category } from "../../../types";
 import { useToast } from "@/app/components/ToastContext";
 import { Modal } from "@/app/components/Modal";
 import { Pagination } from "@/app/components/Pagination";
 import { resolveImageUrl } from "../../../utils/imageUtils";
+import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
+import Skeleton from "@/app/components/ui/Skeleton";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -54,9 +59,16 @@ export default function ProductsPage() {
     discountPercent: 0,
   });
 
-  // Image upload states
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  // Media upload states
+  interface MediaItem {
+    id: string;
+    file?: File;
+    preview: string;
+    type: "image" | "video";
+    isPrimary: boolean;
+    order: number;
+  }
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
 
   // Category management modal state
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -139,7 +151,25 @@ export default function ProductsPage() {
         stock: product.stock || 0,
         discountPercent: product.discountPercent || 0,
       });
-      setImagePreview(product.image);
+      // Load existing media if available
+      if (product.media && product.media.length > 0) {
+        const existingMedia: MediaItem[] = product.media.map((m, index) => ({
+          id: `existing-${m.id}`,
+          preview: m.url.startsWith('/') ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '') + m.url : m.url,
+          type: m.type as "image" | "video",
+          isPrimary: m.isPrimary,
+          order: m.order,
+        }));
+        setMediaItems(existingMedia);
+      } else {
+        setMediaItems([{
+          id: 'existing-main',
+          preview: product.image,
+          type: "image",
+          isPrimary: true,
+          order: 0,
+        }]);
+      }
     } else {
       setEditingProduct(null);
       setFormData({
@@ -151,60 +181,177 @@ export default function ProductsPage() {
         stock: 0,
         discountPercent: 0,
       });
-      setImagePreview(null);
-      setImageFile(null);
+      setMediaItems([]);
     }
     setIsModalOpen(true);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const handleAddMedia = (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "video") => {
+    const files = Array.from(e.target.files || []);
+    const maxSize = type === "image" ? 5 * 1024 * 1024 : 50 * 1024 * 1024; // 5MB for images, 50MB for videos
+    
+    files.forEach((file) => {
       // Validate file type
-      if (!file.type.startsWith("image/")) {
-        showToast("Please select a valid image file", "error");
+      const isValidType = type === "image" 
+        ? file.type.startsWith("image/")
+        : file.type.startsWith("video/");
+      
+      if (!isValidType) {
+        showToast(`Please select a valid ${type} file`, "error");
         return;
       }
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        showToast("Image size must be less than 5MB", "error");
+      
+      // Validate file size
+      if (file.size > maxSize) {
+        showToast(`${type === "image" ? "Image" : "Video"} size must be less than ${maxSize / (1024 * 1024)}MB`, "error");
         return;
       }
 
-      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setImagePreview(base64String);
-        setFormData({ ...formData, image: base64String });
+        const preview = reader.result as string;
+        const newItem: MediaItem = {
+          id: `new-${Date.now()}-${Math.random()}`,
+          file,
+          preview,
+          type,
+          isPrimary: mediaItems.length === 0, // First item is primary by default
+          order: mediaItems.length,
+        };
+        setMediaItems([...mediaItems, newItem]);
       };
       reader.readAsDataURL(file);
+    });
+    
+    // Reset input
+    e.target.value = '';
+  };
+
+  const handleRemoveMedia = (id: string) => {
+    const newItems = mediaItems.filter(item => item.id !== id);
+    // If we removed the primary item, make the first remaining item primary
+    if (newItems.length > 0 && mediaItems.find(item => item.id === id)?.isPrimary) {
+      newItems[0].isPrimary = true;
     }
+    setMediaItems(newItems);
+  };
+
+  const handleSetPrimary = (id: string) => {
+    setMediaItems(mediaItems.map(item => ({
+      ...item,
+      isPrimary: item.id === id,
+    })));
+  };
+
+  const handleMoveMedia = (id: string, direction: "up" | "down") => {
+    const index = mediaItems.findIndex(item => item.id === id);
+    if (index === -1) return;
+    
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= mediaItems.length) return;
+
+    const newItems = [...mediaItems];
+    [newItems[index], newItems[newIndex]] = [newItems[newIndex], newItems[index]];
+    
+    // Update order values
+    newItems.forEach((item, idx) => {
+      item.order = idx;
+    });
+    
+    setMediaItems(newItems);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      if (editingProduct) {
-        await apiFetch(`/products/${editingProduct.id}`, {
-          method: "PATCH",
-          body: formData,
+      const token = localStorage.getItem("token");
+      let baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+      if (!baseUrl.includes('/api/v1')) baseUrl = `${baseUrl}/api/v1`;
+      if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+
+      // Create FormData
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("price", formData.price.toString());
+      formDataToSend.append("category", formData.category);
+      formDataToSend.append("description", formData.description || "");
+      formDataToSend.append("stock", formData.stock.toString());
+      formDataToSend.append("discountPercent", (formData.discountPercent || 0).toString());
+
+      // Separate items with files (new uploads) and items without files (existing)
+      const itemsWithFiles = mediaItems.filter(item => item.file);
+      const itemsWithoutFiles = mediaItems.filter(item => !item.file);
+
+      // Add image files (only new uploads)
+      const imageFiles = itemsWithFiles.filter(item => item.type === "image");
+      imageFiles.forEach((item) => {
+        if (item.file) {
+          formDataToSend.append("images", item.file);
+        }
+      });
+
+      // Add video files (only new uploads)
+      const videoFiles = itemsWithFiles.filter(item => item.type === "video");
+      videoFiles.forEach((item) => {
+        if (item.file) {
+          formDataToSend.append("videos", item.file);
+        }
+      });
+
+      // Create metadata array matching the file upload order
+      // First images, then videos, matching backend processing order
+      const mediaMetadata: Array<{ type: string; isPrimary: boolean; order: number }> = [];
+      
+      // Add metadata for images (matching upload order)
+      imageFiles.forEach((item) => {
+        mediaMetadata.push({
+          type: 'image',
+          isPrimary: item.isPrimary,
+          order: item.order,
         });
-        showToast("Product updated successfully", "success");
-      } else {
-        await apiFetch("/products", {
-          method: "POST",
-          body: formData,
+      });
+
+      // Add metadata for videos (matching upload order)
+      videoFiles.forEach((item) => {
+        mediaMetadata.push({
+          type: 'video',
+          isPrimary: item.isPrimary,
+          order: item.order,
         });
-        showToast("Product created successfully", "success");
+      });
+
+      // For existing items without files, include their URLs in a separate field
+      // (Backend will need to handle this - for now, we'll only send new files)
+      if (mediaMetadata.length > 0) {
+        formDataToSend.append("mediaData", JSON.stringify(mediaMetadata));
       }
+
+      const url = editingProduct 
+        ? `${baseUrl}/products/${editingProduct.id}`
+        : `${baseUrl}/products`;
+      const method = editingProduct ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formDataToSend,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to save product");
+      }
+
+      showToast(editingProduct ? "Product updated successfully" : "Product created successfully", "success");
       setIsModalOpen(false);
       fetchProducts();
       fetchCategories();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save product:", error);
-      showToast("Error saving product", "error");
+      showToast(error.message || "Error saving product", "error");
     } finally {
       setSubmitting(false);
     }
@@ -555,14 +702,31 @@ export default function ProductsPage() {
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
-                    <Loader2
-                      className="animate-spin mx-auto text-black dark:text-white"
-                      size={32}
-                    />
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={index} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded-lg" />
+                        <Skeleton className="h-5 w-32" />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-4 w-20" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-5 w-16" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-5 w-12" />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
               ) : paginatedProducts.length > 0 ? (
                 paginatedProducts.map((product) => (
                   <tr
@@ -574,7 +738,7 @@ export default function ProductsPage() {
                         <div className="h-12 w-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center text-zinc-400">
                           {product.image ? (
                             <img
-                              src={product.image}
+                              src={resolveImageUrl(product.image)}
                               alt={product.name}
                               className="h-full w-full object-cover"
                             />
@@ -597,16 +761,35 @@ export default function ProductsPage() {
                         {product.category}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-bold text-zinc-900 dark:text-white">
-                      ${product.price}
+                    <td className="px-6 py-4">
+                      {product.discountPercent && product.discountPercent > 0 ? (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-zinc-400 line-through">
+                            ${product.price}
+                          </span>
+                          <span className="font-bold text-zinc-900 dark:text-white">
+                            $
+                            {(
+                              product.price *
+                              (1 - product.discountPercent / 100)
+                            ).toFixed(2)}
+                          </span>
+                          <span className="text-[10px] font-bold text-green-600 dark:text-green-400">
+                            {product.discountPercent}% OFF
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-zinc-900 dark:text-white">
+                          ${product.price}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                          (product.stock || 0) > 0
-                            ? "bg-zinc-200 text-black dark:bg-zinc-700 dark:text-white"
-                            : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                        }`}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium ${(product.stock || 0) > 0
+                          ? "bg-zinc-200 text-black dark:bg-zinc-700 dark:text-white"
+                          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                          }`}
                       >
                         {product.stock || 0} in stock
                       </span>
@@ -652,166 +835,296 @@ export default function ProductsPage() {
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-                {editingProduct ? "Edit Product" : "Add New Product"}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 my-8">
+            <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between sticky top-0 bg-white dark:bg-zinc-900 z-10">
+              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
+                {editingProduct ? "Edit Product" : "Create New Product"}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer"
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
               >
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  Product Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none"
-                    value={formData.price || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFormData({
-                        ...formData,
-                        price: value === "" ? 0 : parseFloat(value) || 0,
-                      });
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Category
-                  </label>
-                  <select
-                    required
-                    className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white cursor-pointer outline-none"
-                    value={formData.category}
-                    onChange={(e) =>
-                      setFormData({ ...formData, category: e.target.value })
-                    }
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.name}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Stock Quantity
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none"
-                    value={formData.stock || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFormData({
-                        ...formData,
-                        stock: value === "" ? 0 : parseInt(value) || 0,
-                      });
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Discount (%)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none"
-                    value={formData.discountPercent || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFormData({
-                        ...formData,
-                        discountPercent:
-                          value === "" ? 0 : parseFloat(value) || 0,
-                      });
-                    }}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  Product Image
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white dark:file:bg-white dark:file:text-black hover:file:opacity-90 file:cursor-pointer"
-                />
-                {imagePreview && (
-                  <div className="mt-3">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-48 object-cover rounded-xl border border-zinc-200 dark:border-zinc-800"
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column - Form Fields */}
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-zinc-900 dark:text-white mb-2">
+                      Product Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full px-4 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white transition-all text-zinc-900 dark:text-white outline-none"
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      placeholder="Enter product name"
                     />
                   </div>
-                )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-zinc-900 dark:text-white mb-2">
+                        Price ($) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        className="w-full px-4 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white transition-all text-zinc-900 dark:text-white outline-none"
+                        value={formData.price || ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData({
+                            ...formData,
+                            price: value === "" ? 0 : parseFloat(value) || 0,
+                          });
+                        }}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-zinc-900 dark:text-white mb-2">
+                        Category <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        className="w-full px-4 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white transition-all text-zinc-900 dark:text-white cursor-pointer outline-none"
+                        value={formData.category}
+                        onChange={(e) =>
+                          setFormData({ ...formData, category: e.target.value })
+                        }
+                      >
+                        <option value="">Select Category</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.name}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-zinc-900 dark:text-white mb-2">
+                        Stock Quantity <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        required
+                        className="w-full px-4 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white transition-all text-zinc-900 dark:text-white outline-none"
+                        value={formData.stock || ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData({
+                            ...formData,
+                            stock: value === "" ? 0 : parseInt(value) || 0,
+                          });
+                        }}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-zinc-900 dark:text-white mb-2">
+                        Discount (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white transition-all text-zinc-900 dark:text-white outline-none"
+                        value={formData.discountPercent || ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData({
+                            ...formData,
+                            discountPercent:
+                              value === "" ? 0 : parseFloat(value) || 0,
+                          });
+                        }}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-zinc-900 dark:text-white mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      rows={4}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white transition-all text-zinc-900 dark:text-white outline-none resize-none"
+                      value={formData.description}
+                      onChange={(e) =>
+                        setFormData({ ...formData, description: e.target.value })
+                      }
+                      placeholder="Enter product description..."
+                    />
+                  </div>
+                </div>
+
+                {/* Right Column - Media Upload */}
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-zinc-900 dark:text-white mb-3">
+                      Product Media (Images & Videos)
+                    </label>
+                    
+                    {/* Add Media Buttons */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <label className="flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 hover:border-black dark:hover:border-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer group">
+                        <ImageIcon className="text-zinc-400 group-hover:text-black dark:group-hover:text-white transition-colors" size={24} />
+                        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-black dark:group-hover:text-white">
+                          Add Images
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleAddMedia(e, "image")}
+                          className="hidden"
+                        />
+                      </label>
+                      <label className="flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 hover:border-black dark:hover:border-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer group">
+                        <Video className="text-zinc-400 group-hover:text-black dark:group-hover:text-white transition-colors" size={24} />
+                        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-black dark:group-hover:text-white">
+                          Add Videos
+                        </span>
+                        <input
+                          type="file"
+                          accept="video/*"
+                          multiple
+                          onChange={(e) => handleAddMedia(e, "video")}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Media List - Scrollable */}
+                    {mediaItems.length > 0 ? (
+                      <div className="border-2 border-zinc-200 dark:border-zinc-700 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 p-4 max-h-[500px] overflow-y-auto custom-scrollbar">
+                        <div className="grid grid-cols-2 gap-3">
+                          {mediaItems
+                            .sort((a, b) => a.order - b.order)
+                            .map((item, index) => (
+                              <div
+                                key={item.id}
+                                className="group relative bg-white dark:bg-zinc-900 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden hover:border-black dark:hover:border-white transition-all"
+                              >
+                                {/* Preview */}
+                                <div className="relative aspect-square w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                  {item.type === "image" ? (
+                                    <img
+                                      src={item.preview}
+                                      alt="Preview"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Video size={32} className="text-zinc-400" />
+                                    </div>
+                                  )}
+                                  {item.isPrimary && (
+                                    <div className="absolute top-2 left-2 bg-yellow-500 rounded-full p-1.5 shadow-lg">
+                                      <Star size={14} className="text-white fill-white" />
+                                    </div>
+                                  )}
+                                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveMedia(item.id)}
+                                      className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Controls */}
+                                <div className="p-3 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                                      {item.type}
+                                    </span>
+                                    {item.isPrimary && (
+                                      <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 rounded-full font-medium">
+                                        Primary
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetPrimary(item.id)}
+                                      disabled={item.isPrimary}
+                                      className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer font-medium"
+                                    >
+                                      {item.isPrimary ? "Primary" : "Set Primary"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMoveMedia(item.id, "up")}
+                                      disabled={index === 0}
+                                      className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                      title="Move up"
+                                    >
+                                      <ChevronUp size={14} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMoveMedia(item.id, "down")}
+                                      disabled={index === mediaItems.length - 1}
+                                      className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                      title="Move down"
+                                    >
+                                      <ChevronDown size={14} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 p-12 flex flex-col items-center justify-center text-center">
+                        <ImageIcon className="text-zinc-400 mb-3" size={48} />
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">
+                          No media added yet
+                        </p>
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
+                          Add images or videos to showcase your product
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  Description
-                </label>
-                <textarea
-                  rows={3}
-                  className="w-full px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-zinc-900 dark:text-white outline-none"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
-              </div>
-              <div className="pt-4 flex gap-3">
+
+              {/* Action Buttons */}
+              <div className="pt-6 mt-6 border-t border-zinc-200 dark:border-zinc-800 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 font-medium hover:bg-zinc-50 transition-colors cursor-pointer"
+                  className="flex-1 px-6 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest text-xs transition-colors shadow-lg shadow-black/5 disabled:opacity-50 cursor-pointer hover:opacity-90"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-black/10 disabled:opacity-50 cursor-pointer hover:opacity-90"
                 >
-                  {submitting && <Loader2 className="animate-spin" size={18} />}
+                  {submitting && <LoadingSpinner size="small" />}
                   {editingProduct ? "Update Product" : "Create Product"}
                 </button>
               </div>

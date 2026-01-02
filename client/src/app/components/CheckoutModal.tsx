@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, CreditCard, Truck, CheckCircle } from 'lucide-react';
+import { X, CreditCard, Truck, CheckCircle, LogIn } from 'lucide-react';
 import Image from 'next/image';
 import { useSelector, useDispatch } from 'react-redux';
 import { useFormik } from 'formik';
@@ -19,7 +19,7 @@ import { CartItem } from '../../types';
 
 
 import { orderService } from '../../services/orderService';
-import { AppDispatch } from '../../redux/store';
+import { AppDispatch, RootState } from '../../redux/store';
 import { resolveImageUrl } from '../../utils/imageUtils';
 
 type OrderReceipt = {
@@ -39,6 +39,7 @@ export default function CheckoutModal() {
     const [orderReceipt, setOrderReceipt] = useState<OrderReceipt>(null);
     const [loading, setLoading] = useState(false);
     const [checkoutError, setCheckoutError] = useState('');
+    const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
 
     const handleToggleCheckout = () => dispatch(toggleCheckout());
     const handleClearCart = () => dispatch(clearCart());
@@ -72,6 +73,10 @@ export default function CheckoutModal() {
         },
         validationSchema,
         onSubmit: async (values) => {
+            if (!isAuthenticated) {
+                setCheckoutError('Please sign in to confirm your order');
+                return;
+            }
             setLoading(true);
             setCheckoutError('');
             try {
@@ -192,7 +197,7 @@ export default function CheckoutModal() {
                     <div className="max-w-2xl mx-auto">
                         <h2 className="text-3xl sm:text-4xl font-black mb-2 text-zinc-900 dark:text-white">Checkout</h2>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8">Complete your order details</p>
-                        
+
                         <form id="checkout-form" onSubmit={formik.handleSubmit} className="space-y-8">
                             {/* Contact Info */}
                             <div className="space-y-5">
@@ -200,7 +205,7 @@ export default function CheckoutModal() {
                                     <div className="h-1 w-8 bg-black dark:bg-white rounded-full"></div>
                                     <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Contact Information</h3>
                                 </div>
-                                
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                     <div>
                                         <label htmlFor="firstName" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
@@ -209,11 +214,10 @@ export default function CheckoutModal() {
                                         <input
                                             type="text"
                                             id="firstName"
-                                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
-                                                formik.touched.firstName && formik.errors.firstName 
-                                                    ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' 
+                                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${formik.touched.firstName && formik.errors.firstName
+                                                    ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                                                     : 'border-zinc-200 dark:border-zinc-700 focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10'
-                                            }`}
+                                                }`}
                                             placeholder="John"
                                             {...formik.getFieldProps('firstName')}
                                         />
@@ -223,7 +227,7 @@ export default function CheckoutModal() {
                                             </p>
                                         )}
                                     </div>
-                                    
+
                                     <div>
                                         <label htmlFor="lastName" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
                                             Last Name
@@ -231,11 +235,10 @@ export default function CheckoutModal() {
                                         <input
                                             type="text"
                                             id="lastName"
-                                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
-                                                formik.touched.lastName && formik.errors.lastName 
-                                                    ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' 
+                                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${formik.touched.lastName && formik.errors.lastName
+                                                    ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                                                     : 'border-zinc-200 dark:border-zinc-700 focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10'
-                                            }`}
+                                                }`}
                                             placeholder="Doe"
                                             {...formik.getFieldProps('lastName')}
                                         />
@@ -246,7 +249,7 @@ export default function CheckoutModal() {
                                         )}
                                     </div>
                                 </div>
-                                
+
                                 <div>
                                     <label htmlFor="email" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
                                         Email Address
@@ -254,11 +257,10 @@ export default function CheckoutModal() {
                                     <input
                                         type="email"
                                         id="email"
-                                        className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
-                                            formik.touched.email && formik.errors.email 
-                                                ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' 
+                                        className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${formik.touched.email && formik.errors.email
+                                                ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                                                 : 'border-zinc-200 dark:border-zinc-700 focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10'
-                                        }`}
+                                            }`}
                                         placeholder="john.doe@example.com"
                                         {...formik.getFieldProps('email')}
                                     />
@@ -276,7 +278,7 @@ export default function CheckoutModal() {
                                     <div className="h-1 w-8 bg-black dark:bg-white rounded-full"></div>
                                     <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Shipping Address</h3>
                                 </div>
-                                
+
                                 <div>
                                     <label htmlFor="address" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
                                         Street Address
@@ -284,11 +286,10 @@ export default function CheckoutModal() {
                                     <input
                                         type="text"
                                         id="address"
-                                        className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
-                                            formik.touched.address && formik.errors.address 
-                                                ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' 
+                                        className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${formik.touched.address && formik.errors.address
+                                                ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                                                 : 'border-zinc-200 dark:border-zinc-700 focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10'
-                                        }`}
+                                            }`}
                                         placeholder="123 Main Street"
                                         {...formik.getFieldProps('address')}
                                     />
@@ -298,7 +299,7 @@ export default function CheckoutModal() {
                                         </p>
                                     )}
                                 </div>
-                                
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                     <div>
                                         <label htmlFor="city" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
@@ -307,11 +308,10 @@ export default function CheckoutModal() {
                                         <input
                                             type="text"
                                             id="city"
-                                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
-                                                formik.touched.city && formik.errors.city 
-                                                    ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' 
+                                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${formik.touched.city && formik.errors.city
+                                                    ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                                                     : 'border-zinc-200 dark:border-zinc-700 focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10'
-                                            }`}
+                                                }`}
                                             placeholder="New York"
                                             {...formik.getFieldProps('city')}
                                         />
@@ -321,7 +321,7 @@ export default function CheckoutModal() {
                                             </p>
                                         )}
                                     </div>
-                                    
+
                                     <div>
                                         <label htmlFor="zip" className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
                                             ZIP / Postal Code
@@ -329,11 +329,10 @@ export default function CheckoutModal() {
                                         <input
                                             type="text"
                                             id="zip"
-                                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${
-                                                formik.touched.zip && formik.errors.zip 
-                                                    ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' 
+                                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 ${formik.touched.zip && formik.errors.zip
+                                                    ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
                                                     : 'border-zinc-200 dark:border-zinc-700 focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10'
-                                            }`}
+                                                }`}
                                             placeholder="10001"
                                             {...formik.getFieldProps('zip')}
                                         />
@@ -352,14 +351,13 @@ export default function CheckoutModal() {
                                     <div className="h-1 w-8 bg-black dark:bg-white rounded-full"></div>
                                     <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Payment Method</h3>
                                 </div>
-                                
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <label 
-                                        className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
-                                            formik.values.paymentMethod === 'card' 
-                                                ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black shadow-lg shadow-black/10 dark:shadow-white/10' 
+                                    <label
+                                        className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${formik.values.paymentMethod === 'card'
+                                                ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black shadow-lg shadow-black/10 dark:shadow-white/10'
                                                 : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 hover:border-zinc-300 dark:hover:border-zinc-600 hover:shadow-md'
-                                        }`}
+                                            }`}
                                     >
                                         <input
                                             type="radio"
@@ -377,13 +375,12 @@ export default function CheckoutModal() {
                                             </div>
                                         )}
                                     </label>
-                                    
-                                    <label 
-                                        className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
-                                            formik.values.paymentMethod === 'cod' 
-                                                ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black shadow-lg shadow-black/10 dark:shadow-white/10' 
+
+                                    <label
+                                        className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${formik.values.paymentMethod === 'cod'
+                                                ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black shadow-lg shadow-black/10 dark:shadow-white/10'
                                                 : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 hover:border-zinc-300 dark:hover:border-zinc-600 hover:shadow-md'
-                                        }`}
+                                            }`}
                                     >
                                         <input
                                             type="radio"
@@ -413,13 +410,25 @@ export default function CheckoutModal() {
                         <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-2">Order Summary</h3>
                         <div className="h-1 w-12 bg-black dark:bg-white rounded-full"></div>
                     </div>
-                    
+
                     {checkoutError && (
                         <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800">
                             <p className="text-sm font-semibold text-red-600 dark:text-red-400 text-center">{checkoutError}</p>
+                            {!isAuthenticated && checkoutError.includes('sign in') && (
+                                <button
+                                    onClick={() => {
+                                        handleToggleCheckout();
+                                        router.push('/login?redirect=checkout');
+                                    }}
+                                    className="mt-3 w-full flex items-center justify-center gap-2 py-2 px-4 bg-black dark:bg-white text-white dark:text-black rounded-lg text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer"
+                                >
+                                    <LogIn size={14} />
+                                    Sign In Now
+                                </button>
+                            )}
                         </div>
                     )}
-                    
+
                     {/* Cart Items */}
                     <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-6 min-h-0">
                         {items.length === 0 ? (
@@ -471,11 +480,10 @@ export default function CheckoutModal() {
                         type="submit"
                         form="checkout-form"
                         disabled={loading || items.length === 0}
-                        className={`w-full rounded-xl px-6 py-4 text-base font-bold text-white dark:text-black shadow-lg hover:shadow-xl transition-all duration-200 ${
-                            loading || items.length === 0
-                                ? 'bg-zinc-400 dark:bg-zinc-600 cursor-not-allowed opacity-60' 
+                        className={`w-full rounded-xl px-6 py-4 text-base font-bold text-white dark:text-black shadow-lg hover:shadow-xl transition-all duration-200 ${loading || items.length === 0
+                                ? 'bg-zinc-400 dark:bg-zinc-600 cursor-not-allowed opacity-60'
                                 : 'bg-black dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-200 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]'
-                        }`}
+                            }`}
                     >
                         {loading ? (
                             <span className="flex items-center justify-center gap-2">

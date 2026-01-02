@@ -8,47 +8,100 @@ import AppError from "../utils/appError.js";
 import { APIFeatures } from "../utils/apiFeatures.js";
 import jwt from "jsonwebtoken";
 import { promisify } from "util";
+import fs from "fs/promises";
 
 // 1. Multer Memory Storage Configuration
 const multerStorage = multer.memoryStorage();
 
-// 2. Multer Filter (Allow only images)
+// 2. Multer Filter (Allow images and videos)
 const multerFilter = (req: Request, file: any, cb: any) => {
-  if (file.mimetype.startsWith("image")) {
+  if (file.mimetype.startsWith("image") || file.mimetype.startsWith("video")) {
     cb(null, true);
   } else {
-    cb(new AppError("Not an image! Please upload only images.", 400), false);
+    cb(new AppError("Please upload only images or videos.", 400), false);
   }
 };
 
 const upload = multer({
   storage: multerStorage,
   fileFilter: multerFilter,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit for videos
+  },
 });
 
-// Middleware for uploading a single image
+// Middleware for uploading multiple files (images and videos)
+export const uploadProductMedia = upload.fields([
+  { name: "images", maxCount: 20 },
+  { name: "videos", maxCount: 10 },
+]);
+
+// Legacy single image upload (for backward compatibility)
 export const uploadProductImage = upload.single("image");
 
-// 3. Image Processing Middleware (Sharp)
+// 3. Media Processing Middleware
+export const processProductMedia = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+    // Process images
+    const imageFiles = files?.images || [];
+    const processedImages: string[] = [];
+
+    for (const file of imageFiles) {
+      const filename = `product-image-${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
+      await sharp(file.buffer)
+        .resize(600, 600)
+        .toFormat("webp")
+        .webp({ quality: 90 })
+        .toFile(`public/img/products/${filename}`);
+      processedImages.push(`/img/products/${filename}`);
+    }
+
+    // Process videos (just save them, no processing)
+    const videoFiles = files?.videos || [];
+    const processedVideos: string[] = [];
+
+    // Ensure videos directory exists
+    await fs.mkdir("public/img/videos", { recursive: true });
+
+    for (const file of videoFiles) {
+      const ext = file.originalname.split('.').pop() || 'mp4';
+      const filename = `product-video-${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+      await fs.writeFile(`public/img/videos/${filename}`, file.buffer);
+      processedVideos.push(`/img/videos/${filename}`);
+    }
+
+    // Store processed media in req.body for use in create/update handlers
+    req.body.processedMedia = {
+      images: processedImages,
+      videos: processedVideos,
+    };
+
+    // For backward compatibility, set image to first image if available
+    if (processedImages.length > 0) {
+      req.body.image = processedImages[0];
+    }
+
+    next();
+  }
+);
+
+// Legacy image processing middleware (for backward compatibility)
 export const resizeProductImage = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     if (!req.file) return next();
 
     // Create a unique filename
-    // Use timestamp or uuid, here we use a simple slug
     const filename = `product-${Date.now()}.webp`;
 
-    // Define full path (ensure public/img/products exists)
-    // sharp automatically handles the buffer from req.file.buffer
     await sharp(req.file.buffer)
       .resize(600, 600)
       .toFormat("webp")
       .webp({ quality: 90 })
       .toFile(`public/img/products/${filename}`);
 
-    // Save filename to body so the createOne/updateOne factory can pick it up
     req.body.image = `/img/products/${filename}`;
-
     next();
   }
 );
@@ -157,6 +210,9 @@ export const getAllProducts = catchAsync(
         reviews: {
           select: { rating: true },
         },
+        media: {
+          orderBy: { order: 'asc' },
+        },
       },
     });
 
@@ -210,6 +266,9 @@ export const getProduct = catchAsync(
         },
         _count: {
           select: { reviews: true },
+        },
+        media: {
+          orderBy: { order: 'asc' },
         },
       },
     });
@@ -266,8 +325,295 @@ export const getProduct = catchAsync(
   }
 );
 
-export const createProduct = factory.createOne(prisma.product);
-export const updateProduct = factory.updateOne(prisma.product);
+export const createProduct = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const {
+      name,
+      description,
+      price,
+      category,
+      image,
+      section,
+      stock,
+      discountPercent,
+      processedMedia,
+      mediaData, // JSON string with order and isPrimary info
+    } = req.body;
+
+    // Parse mediaData if it's a string
+    let mediaOrder: Array<{ url: string; type: string; isPrimary: boolean; order: number }> = [];
+    if (mediaData) {
+      try {
+        mediaOrder = typeof mediaData === 'string' ? JSON.parse(mediaData) : mediaData;
+      } catch (e) {
+        // Invalid JSON, ignore
+      }
+    }
+
+    // Create product
+    const product = await prisma.product.create({
+      data: {
+        name,
+        description,
+        price: parseFloat(price),
+        category,
+        image: image || "/images/placeholder.jpg",
+        section,
+        stock: parseInt(stock) || 0,
+        discountPercent: discountPercent ? parseFloat(discountPercent) : 0,
+      },
+    });
+
+    // Create media entries if processedMedia exists
+    if (processedMedia) {
+      const allMedia: Array<{ url: string; type: string; isPrimary: boolean; order: number }> = [];
+
+      // Add images (match metadata by index)
+      (processedMedia.images || []).forEach((url: string, index: number) => {
+        const mediaInfo = mediaOrder[index] || {};
+        allMedia.push({
+          url,
+          type: 'image',
+          isPrimary: mediaInfo.isPrimary || (index === 0 && !mediaOrder.some((m: any) => m.isPrimary)),
+          order: mediaInfo.order !== undefined ? mediaInfo.order : index,
+        });
+      });
+
+      // Add videos (match metadata by index, offset by image count)
+      (processedMedia.videos || []).forEach((url: string, index: number) => {
+        const videoIndex = (processedMedia.images?.length || 0) + index;
+        const mediaInfo = mediaOrder[videoIndex] || {};
+        allMedia.push({
+          url,
+          type: 'video',
+          isPrimary: mediaInfo.isPrimary || false,
+          order: mediaInfo.order !== undefined ? mediaInfo.order : videoIndex,
+        });
+      });
+
+      // Ensure only one primary
+      if (allMedia.some((m) => m.isPrimary)) {
+        allMedia.forEach((m) => {
+          if (m.isPrimary) {
+            // Keep this as primary
+          }
+        });
+      } else if (allMedia.length > 0) {
+        allMedia[0].isPrimary = true;
+      }
+
+      // Sort by order
+      allMedia.sort((a, b) => a.order - b.order);
+
+      // Create media records
+      if (allMedia.length > 0) {
+        await prisma.productMedia.createMany({
+          data: allMedia.map((m) => ({
+            productId: product.id,
+            url: m.url,
+            type: m.type,
+            isPrimary: m.isPrimary,
+            order: m.order,
+          })),
+        });
+      }
+    }
+
+    // Fetch product with media
+    const productWithMedia = await prisma.product.findUnique({
+      where: { id: product.id },
+      include: {
+        media: {
+          orderBy: { order: 'asc' },
+        },
+      },
+    });
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        data: productWithMedia,
+      },
+    });
+  }
+);
+// Custom update product to handle reverse sync with offers
+export const updateProduct = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const id = parseInt(req.params.id);
+    const {
+      name,
+      description,
+      price,
+      category,
+      image,
+      section,
+      stock,
+      discountPercent,
+      processedMedia,
+      mediaData, // JSON string with order and isPrimary info
+    } = req.body;
+
+    // Check if product exists
+    const existingProduct = await prisma.product.findUnique({
+      where: { id }
+    });
+
+    if (!existingProduct) {
+      return next(new AppError("No product found with this ID", 404));
+    }
+
+    const updatedProduct = await prisma.product.update({
+      where: { id },
+      data: {
+        name,
+        description,
+        price: parseFloat(price),
+        category,
+        image,
+        section,
+        stock: parseInt(stock),
+        discountPercent: discountPercent ? parseFloat(discountPercent) : 0
+      }
+    });
+
+    // Handle media updates if processedMedia exists
+    if (processedMedia) {
+      // Delete existing media
+      await prisma.productMedia.deleteMany({
+        where: { productId: id },
+      });
+
+      // Parse mediaData if it's a string
+      let mediaOrder: Array<{ url: string; type: string; isPrimary: boolean; order: number }> = [];
+      if (mediaData) {
+        try {
+          mediaOrder = typeof mediaData === 'string' ? JSON.parse(mediaData) : mediaData;
+        } catch (e) {
+          // Invalid JSON, ignore
+        }
+      }
+
+      const allMedia: Array<{ url: string; type: string; isPrimary: boolean; order: number }> = [];
+
+      // Add images (match metadata by index)
+      (processedMedia.images || []).forEach((url: string, index: number) => {
+        const mediaInfo = mediaOrder[index] || {};
+        allMedia.push({
+          url,
+          type: 'image',
+          isPrimary: mediaInfo.isPrimary || (index === 0 && !mediaOrder.some((m: any) => m.isPrimary)),
+          order: mediaInfo.order !== undefined ? mediaInfo.order : index,
+        });
+      });
+
+      // Add videos (match metadata by index, offset by image count)
+      (processedMedia.videos || []).forEach((url: string, index: number) => {
+        const videoIndex = (processedMedia.images?.length || 0) + index;
+        const mediaInfo = mediaOrder[videoIndex] || {};
+        allMedia.push({
+          url,
+          type: 'video',
+          isPrimary: mediaInfo.isPrimary || false,
+          order: mediaInfo.order !== undefined ? mediaInfo.order : videoIndex,
+        });
+      });
+
+      // Ensure only one primary
+      if (allMedia.some((m) => m.isPrimary)) {
+        // Keep existing primary
+      } else if (allMedia.length > 0) {
+        allMedia[0].isPrimary = true;
+      }
+
+      // Sort by order
+      allMedia.sort((a, b) => a.order - b.order);
+
+      // Create media records
+      if (allMedia.length > 0) {
+        await prisma.productMedia.createMany({
+          data: allMedia.map((m) => ({
+            productId: id,
+            url: m.url,
+            type: m.type,
+            isPrimary: m.isPrimary,
+            order: m.order,
+          })),
+        });
+      }
+    }
+
+    // If discountPercent was updated, sync with active offers
+    if (discountPercent !== undefined) {
+      const now = new Date();
+      const numDiscount = parseFloat(discountPercent);
+
+      if (numDiscount > 0) {
+        // Find if there is already an active offer for this product
+        const activeOffer = await prisma.offer.findFirst({
+          where: {
+            targetType: "product",
+            targetId: id,
+            isActive: true,
+            AND: [
+              { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+              { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+            ],
+          },
+        });
+
+        if (activeOffer) {
+          // Update existing active offer
+          await prisma.offer.update({
+            where: { id: activeOffer.id },
+            data: {
+              discountPercent: numDiscount,
+              // Ensure name matches if we want (optional, but good for consistency)
+            },
+          });
+        } else {
+          // Create new active offer (without banner)
+          await prisma.offer.create({
+            data: {
+              title: `Discount on ${name || existingProduct.name}`,
+              description: `Automatic discount for ${name || existingProduct.name}`,
+              discountPercent: numDiscount,
+              targetType: "product",
+              targetId: id,
+              targetName: name || existingProduct.name,
+              isActive: true,
+              showBanner: false,
+              startDate: now, // Start now
+            },
+          });
+        }
+      } else {
+        // Discount is 0, deactivate any active offers for this product
+        await prisma.offer.updateMany({
+          where: {
+            targetType: "product",
+            targetId: id,
+            isActive: true,
+            AND: [
+              { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+              { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+            ],
+          },
+          data: {
+            isActive: false,
+          },
+        });
+      }
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        data: updatedProduct
+      }
+    });
+  }
+);
 export const deleteProduct = factory.deleteOne(prisma.product);
 
 // Additional logic
@@ -395,9 +741,9 @@ export const getDiscountedProducts = catchAsync(
     const categoriesForOffers =
       categoryIds.length > 0
         ? await prisma.category.findMany({
-            where: { id: { in: categoryIds } },
-            select: { id: true, name: true },
-          })
+          where: { id: { in: categoryIds } },
+          select: { id: true, name: true },
+        })
         : [];
 
     const categoryIdToNameMap = new Map(

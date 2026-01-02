@@ -11,6 +11,7 @@ import {
     ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
+import Skeleton from '@/app/components/ui/Skeleton';
 
 interface Stats {
     totalRevenue: number;
@@ -114,17 +115,31 @@ export default function DashboardPage() {
                         </Link>
                     </div>
                     <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {recentOrders.length > 0 ? recentOrders.map((order) => (
-                            <Link key={order.id} href={`/admin/orders?id=${order.id}`} className="block p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="font-medium text-zinc-900 dark:text-white">Order #{order.id.toString().slice(-6)}</div>
-                                        <div className="text-sm text-zinc-500">{order.status} • {new Date(order.createdAt).toLocaleDateString()}</div>
+                        {loading ? (
+                            Array.from({ length: 5 }).map((_, index) => (
+                                <div key={index} className="p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                            <Skeleton className="h-5 w-32 mb-2" />
+                                            <Skeleton className="h-4 w-40" />
+                                        </div>
+                                        <Skeleton className="h-5 w-16" />
                                     </div>
-                                    <div className="font-bold text-zinc-900 dark:text-white">${(order.total || order.totalAmount || 0).toFixed(2)}</div>
                                 </div>
-                            </Link>
-                        )) : (
+                            ))
+                        ) : recentOrders.length > 0 ? (
+                            recentOrders.map((order) => (
+                                <Link key={order.id} href={`/admin/orders?id=${order.id}`} className="block p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="font-medium text-zinc-900 dark:text-white">Order #{order.id.toString().slice(-6)}</div>
+                                            <div className="text-sm text-zinc-500">{order.status} • {new Date(order.createdAt).toLocaleDateString()}</div>
+                                        </div>
+                                        <div className="font-bold text-zinc-900 dark:text-white">${(order.total || order.totalAmount || 0).toFixed(2)}</div>
+                                    </div>
+                                </Link>
+                            ))
+                        ) : (
                             <div className="p-8 text-center text-zinc-500">No orders yet.</div>
                         )}
                     </div>
@@ -142,20 +157,33 @@ export default function DashboardPage() {
                         </Link>
                     </div>
                     <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {recentUsers.length > 0 ? recentUsers.map((user) => (
-                            <Link key={user.id} href={`/admin/users?id=${user.id}`} className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer">
-                                <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-400">
-                                    {user.name.charAt(0)}
+                        {loading ? (
+                            Array.from({ length: 5 }).map((_, index) => (
+                                <div key={index} className="flex items-center gap-4 p-4">
+                                    <Skeleton variant="circular" className="h-10 w-10" />
+                                    <div className="flex-1 min-w-0">
+                                        <Skeleton className="h-5 w-32 mb-2" />
+                                        <Skeleton className="h-4 w-40" />
+                                    </div>
+                                    <Skeleton className="h-6 w-16 rounded-full" />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-zinc-900 dark:text-white truncate">{user.name}</div>
-                                    <div className="text-sm text-zinc-500 truncate">{user.email}</div>
-                                </div>
-                                <div className="text-xs font-medium px-2 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-                                    {user.role}
-                                </div>
-                            </Link>
-                        )) : (
+                            ))
+                        ) : recentUsers.length > 0 ? (
+                            recentUsers.map((user) => (
+                                <Link key={user.id} href={`/admin/users?id=${user.id}`} className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer">
+                                    <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-400">
+                                        {user.name.charAt(0)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-zinc-900 dark:text-white truncate">{user.name}</div>
+                                        <div className="text-sm text-zinc-500 truncate">{user.email}</div>
+                                    </div>
+                                    <div className="text-xs font-medium px-2 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                        {user.role}
+                                    </div>
+                                </Link>
+                            ))
+                        ) : (
                             <div className="p-8 text-center text-zinc-500">No users yet.</div>
                         )}
                     </div>

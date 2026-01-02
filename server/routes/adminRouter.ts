@@ -27,6 +27,7 @@ router.delete("/users/:id", adminController.deleteUser);
 router.post("/users/:id/cart/items", adminController.addCartItem);
 router.patch("/users/:id/cart/items/:itemId", adminController.updateCartItem);
 router.delete("/users/:id/cart/items/:itemId", adminController.deleteCartItem);
+router.delete("/users/:id/cart", adminController.deleteCart);
 
 // User order management
 router.post("/users/:id/orders", adminController.createUserOrder);

@@ -8,7 +8,6 @@ import {
     Users,
     Shield,
     ShieldAlert,
-    Loader2,
     Mail,
     User,
     Edit2,
@@ -27,6 +26,8 @@ import { Modal } from '@/app/components/Modal';
 import { UserDetailsDrawer } from '@/app/components/UserDetailsDrawer';
 import { EditUserModal } from '@/app/components/EditUserModal';
 import { Pagination } from '@/app/components/Pagination';
+import LoadingSpinner from '@/app/components/ui/LoadingSpinner';
+import Skeleton from '@/app/components/ui/Skeleton';
 
 export default function UsersPage() {
     const [users, setUsers] = useState<UserData[]>([]);
@@ -344,11 +345,28 @@ export default function UsersPage() {
                         </thead>
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                             {loading ? (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center">
-                                        <Loader2 className="animate-spin mx-auto text-black dark:text-white" size={32} />
-                                    </td>
-                                </tr>
+                                Array.from({ length: 5 }).map((_, index) => (
+                                    <tr key={index} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-4">
+                                                <Skeleton variant="circular" className="h-10 w-10" />
+                                                <Skeleton className="h-5 w-32" />
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 hidden sm:table-cell">
+                                            <Skeleton className="h-4 w-40" />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <Skeleton className="h-6 w-16 rounded-full" />
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Skeleton className="h-8 w-8 rounded-lg" />
+                                                <Skeleton className="h-8 w-8 rounded-lg" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
                             ) : paginatedUsers.length > 0 ? paginatedUsers.map((item) => (
                                 <tr 
                                     key={item.id} 
@@ -405,7 +423,7 @@ export default function UsersPage() {
                                                     } disabled:opacity-50`}
                                             >
                                                 {updatingId === item.id ? (
-                                                    <Loader2 className="animate-spin" size={14} />
+                                                    <LoadingSpinner size="small" />
                                                 ) : (
                                                     item.role === 'admin' ? <ShieldAlert size={14} /> : <Shield size={14} />
                                                 )}
