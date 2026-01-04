@@ -9,6 +9,8 @@ import { APIFeatures } from "../utils/apiFeatures.js";
 import jwt from "jsonwebtoken";
 import { promisify } from "util";
 import fs from "fs/promises";
+import { uploadToSupabase } from "../utils/supabaseStorage.js";
+import { fixOfferSequence } from "../utils/fixSequence.js";
 
 // 1. Multer Memory Storage Configuration
 const multerStorage = multer.memoryStorage();
@@ -50,26 +52,29 @@ export const processProductMedia = catchAsync(
 
     for (const file of imageFiles) {
       const filename = `product-image-${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
-      await sharp(file.buffer)
+      
+      // Process image with Sharp and upload (handles both Supabase and local storage)
+      const processedBuffer = await sharp(file.buffer)
         .resize(600, 600)
         .toFormat("webp")
         .webp({ quality: 90 })
-        .toFile(`public/img/products/${filename}`);
-      processedImages.push(`/img/products/${filename}`);
+        .toBuffer();
+      
+      const publicUrl = await uploadToSupabase(processedBuffer, filename, "images", "products");
+      processedImages.push(publicUrl);
     }
 
-    // Process videos (just save them, no processing)
+    // Process videos
     const videoFiles = files?.videos || [];
     const processedVideos: string[] = [];
-
-    // Ensure videos directory exists
-    await fs.mkdir("public/img/videos", { recursive: true });
 
     for (const file of videoFiles) {
       const ext = file.originalname.split('.').pop() || 'mp4';
       const filename = `product-video-${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-      await fs.writeFile(`public/img/videos/${filename}`, file.buffer);
-      processedVideos.push(`/img/videos/${filename}`);
+      
+      // Upload video (handles both Supabase and local storage)
+      const publicUrl = await uploadToSupabase(file.buffer, filename, "videos", "products");
+      processedVideos.push(publicUrl);
     }
 
     // Store processed media in req.body for use in create/update handlers
@@ -92,16 +97,16 @@ export const resizeProductImage = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     if (!req.file) return next();
 
-    // Create a unique filename
     const filename = `product-${Date.now()}.webp`;
-
-    await sharp(req.file.buffer)
+    // Process image with Sharp and upload (handles both Supabase and local storage)
+    const processedBuffer = await sharp(req.file.buffer)
       .resize(600, 600)
       .toFormat("webp")
       .webp({ quality: 90 })
-      .toFile(`public/img/products/${filename}`);
+      .toBuffer();
+    
+    req.body.image = await uploadToSupabase(processedBuffer, filename, "images", "products");
 
-    req.body.image = `/img/products/${filename}`;
     next();
   }
 );
@@ -180,9 +185,11 @@ export const getAllProducts = catchAsync(
 
     // Build the where clause - filter out products with stock <= 0 from public views
     // Admins can see all products including out-of-stock ones
+    // Also filter out archived products unless includeArchived is true (admin only)
+    const includeArchived = isAdmin && req.query.includeArchived === "true";
     const whereClause = isAdmin
-      ? features.prismaQuery.where
-      : { ...features.prismaQuery.where, stock: { gt: 0 } };
+      ? { ...features.prismaQuery.where, ...(includeArchived ? {} : { isArchived: false }) }
+      : { ...features.prismaQuery.where, stock: { gt: 0 }, isArchived: false };
 
     // Fetch all categories with discounts once (for efficient discount calculation)
     const categoriesWithDiscounts = await prisma.category.findMany({
@@ -200,23 +207,53 @@ export const getAllProducts = catchAsync(
     );
 
     // Enrich with review stats
+    const includeOptions: any = {
+      _count: {
+        select: { reviews: true },
+      },
+      reviews: {
+        select: { rating: true },
+      },
+      media: {
+        orderBy: { order: 'asc' },
+      },
+    };
+    
+    // Conditionally include sizes - will be added after migration
+    // For now, check if we can safely include it
+    const hasSizesTable = await prisma.$queryRaw`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'ProductSize'
+      );
+    `.then((result: any) => result[0]?.exists).catch(() => false);
+
+    if (hasSizesTable) {
+      includeOptions.sizes = {
+        orderBy: { size: 'asc' },
+      };
+    }
+
     const docs = await prisma.product.findMany({
       ...features.prismaQuery,
       where: whereClause,
-      include: {
-        _count: {
-          select: { reviews: true },
-        },
-        reviews: {
-          select: { rating: true },
-        },
-        media: {
-          orderBy: { order: 'asc' },
-        },
-      },
+      include: includeOptions,
     });
 
-    const enrichedDocs = docs.map((doc: any) => {
+    // Filter out size-enabled products where all sizes are out of stock (for non-admin users)
+    const filteredDocs = !isAdmin
+      ? docs.filter((doc: any) => {
+          // For size-enabled products, check if any size has stock > 0
+          if (doc.sizeEnabled && doc.sizes && doc.sizes.length > 0) {
+            return doc.sizes.some((s: any) => s.stock > 0);
+          }
+          // For non-size-enabled products, stock filtering is already done in whereClause
+          return true;
+        })
+      : docs;
+
+    const enrichedDocs = filteredDocs.map((doc: any) => {
       const reviewCount = doc._count.reviews;
       const totalRating = doc.reviews.reduce(
         (acc: number, rev: any) => acc + rev.rating,
@@ -254,23 +291,40 @@ export const getAllProducts = catchAsync(
 export const getProduct = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const id = parseInt(req.params.id);
-    const doc = await prisma.product.findUnique({
-      where: { id },
-      include: {
-        reviews: {
-          include: {
-            user: {
-              select: { name: true },
-            },
+    const includeOptions: any = {
+      reviews: {
+        include: {
+          user: {
+            select: { name: true },
           },
         },
-        _count: {
-          select: { reviews: true },
-        },
-        media: {
-          orderBy: { order: 'asc' },
-        },
       },
+      _count: {
+        select: { reviews: true },
+      },
+      media: {
+        orderBy: { order: 'asc' },
+      },
+    };
+    
+    // Conditionally include sizes - will be added after migration
+    const hasSizesTable = await prisma.$queryRaw`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'ProductSize'
+      );
+    `.then((result: any) => result[0]?.exists).catch(() => false);
+
+    if (hasSizesTable) {
+      includeOptions.sizes = {
+        orderBy: { size: 'asc' },
+      };
+    }
+
+    const doc = await prisma.product.findUnique({
+      where: { id },
+      include: includeOptions,
     });
 
     if (!doc) {
@@ -282,7 +336,13 @@ export const getProduct = catchAsync(
     const isAdmin = user?.role?.toLowerCase() === "admin";
 
     // Hide out-of-stock products from public views (admins can see them)
-    if (doc.stock <= 0 && !isAdmin) {
+    // For size-enabled products, check if all sizes are out of stock
+    if (doc.sizeEnabled && doc.sizes && doc.sizes.length > 0) {
+      const hasAvailableSize = doc.sizes.some((s: any) => s.stock > 0);
+      if (!hasAvailableSize && !isAdmin) {
+        return next(new AppError("No product found with this ID", 404));
+      }
+    } else if (doc.stock <= 0 && !isAdmin) {
       return next(new AppError("No product found with this ID", 404));
     }
 
@@ -361,6 +421,7 @@ export const createProduct = catchAsync(
         section,
         stock: parseInt(stock) || 0,
         discountPercent: discountPercent ? parseFloat(discountPercent) : 0,
+        sizeEnabled: req.body.sizeEnabled === true || req.body.sizeEnabled === "true" || false,
       },
     });
 
@@ -463,73 +524,154 @@ export const updateProduct = catchAsync(
       return next(new AppError("No product found with this ID", 404));
     }
 
+    const updateData: any = {
+      name,
+      description,
+      price: parseFloat(price),
+      category,
+      image,
+      section,
+      stock: parseInt(stock),
+      discountPercent: discountPercent ? parseFloat(discountPercent) : 0,
+    };
+
+    // Only update sizeEnabled if provided
+    if (req.body.sizeEnabled !== undefined) {
+      updateData.sizeEnabled = req.body.sizeEnabled === true || req.body.sizeEnabled === "true";
+      
+      // If enabling sizes, recalculate stock from sizes
+      if (updateData.sizeEnabled) {
+        const allSizes = await prisma.productSize.findMany({
+          where: { productId: id },
+        });
+        updateData.stock = allSizes.reduce((sum, s) => sum + s.stock, 0);
+      }
+    }
+
     const updatedProduct = await prisma.product.update({
       where: { id },
-      data: {
-        name,
-        description,
-        price: parseFloat(price),
-        category,
-        image,
-        section,
-        stock: parseInt(stock),
-        discountPercent: discountPercent ? parseFloat(discountPercent) : 0
-      }
+      data: updateData
     });
 
-    // Handle media updates if processedMedia exists
-    if (processedMedia) {
-      // Delete existing media
-      await prisma.productMedia.deleteMany({
-        where: { productId: id },
-      });
-
+    // Handle media updates - merge existing and new media
+    if (mediaData) {
       // Parse mediaData if it's a string
-      let mediaOrder: Array<{ url: string; type: string; isPrimary: boolean; order: number }> = [];
-      if (mediaData) {
-        try {
-          mediaOrder = typeof mediaData === 'string' ? JSON.parse(mediaData) : mediaData;
-        } catch (e) {
-          // Invalid JSON, ignore
-        }
+      let mediaOrder: Array<{ 
+        url?: string; 
+        type: string; 
+        isPrimary: boolean; 
+        order: number;
+        isNew?: boolean;
+      }> = [];
+      try {
+        mediaOrder = typeof mediaData === 'string' ? JSON.parse(mediaData) : mediaData;
+      } catch (e) {
+        // Invalid JSON, ignore
       }
 
+      // Get new upload URLs from processedMedia
+      const newImageUrls = processedMedia?.images || [];
+      const newVideoUrls = processedMedia?.videos || [];
+      let newImageIndex = 0;
+      let newVideoIndex = 0;
+
+      // Build final media array from mediaOrder
       const allMedia: Array<{ url: string; type: string; isPrimary: boolean; order: number }> = [];
 
-      // Add images (match metadata by index)
-      (processedMedia.images || []).forEach((url: string, index: number) => {
-        const mediaInfo = mediaOrder[index] || {};
-        allMedia.push({
-          url,
-          type: 'image',
-          isPrimary: mediaInfo.isPrimary || (index === 0 && !mediaOrder.some((m: any) => m.isPrimary)),
-          order: mediaInfo.order !== undefined ? mediaInfo.order : index,
-        });
-      });
+      mediaOrder.forEach((mediaInfo: any) => {
+        let url: string;
+        
+        if (mediaInfo.isNew) {
+          // This is a new upload - get URL from processedMedia
+          if (mediaInfo.type === 'image' && newImageIndex < newImageUrls.length) {
+            url = newImageUrls[newImageIndex];
+            newImageIndex++;
+          } else if (mediaInfo.type === 'video' && newVideoIndex < newVideoUrls.length) {
+            url = newVideoUrls[newVideoIndex];
+            newVideoIndex++;
+          } else {
+            // Skip if URL not available
+            return;
+          }
+        } else {
+          // This is existing media - use provided URL
+          url = mediaInfo.url;
+          if (!url) {
+            // Skip if no URL
+            return;
+          }
+        }
 
-      // Add videos (match metadata by index, offset by image count)
-      (processedMedia.videos || []).forEach((url: string, index: number) => {
-        const videoIndex = (processedMedia.images?.length || 0) + index;
-        const mediaInfo = mediaOrder[videoIndex] || {};
         allMedia.push({
           url,
-          type: 'video',
+          type: mediaInfo.type,
           isPrimary: mediaInfo.isPrimary || false,
-          order: mediaInfo.order !== undefined ? mediaInfo.order : videoIndex,
+          order: mediaInfo.order !== undefined ? mediaInfo.order : allMedia.length,
         });
       });
 
       // Ensure only one primary
-      if (allMedia.some((m) => m.isPrimary)) {
-        // Keep existing primary
-      } else if (allMedia.length > 0) {
+      const primaryCount = allMedia.filter(m => m.isPrimary).length;
+      if (primaryCount === 0 && allMedia.length > 0) {
         allMedia[0].isPrimary = true;
+      } else if (primaryCount > 1) {
+        // Keep first primary, remove others
+        let foundFirst = false;
+        allMedia.forEach(m => {
+          if (m.isPrimary && foundFirst) {
+            m.isPrimary = false;
+          } else if (m.isPrimary) {
+            foundFirst = true;
+          }
+        });
       }
 
       // Sort by order
       allMedia.sort((a, b) => a.order - b.order);
 
+      // Delete all existing media and recreate
+      await prisma.productMedia.deleteMany({
+        where: { productId: id },
+      });
+
       // Create media records
+      if (allMedia.length > 0) {
+        await prisma.productMedia.createMany({
+          data: allMedia.map((m) => ({
+            productId: id,
+            url: m.url,
+            type: m.type,
+            isPrimary: m.isPrimary,
+            order: m.order,
+          })),
+        });
+      }
+    } else if (processedMedia) {
+      // Fallback: if mediaData not provided but processedMedia exists, use old logic
+      await prisma.productMedia.deleteMany({
+        where: { productId: id },
+      });
+
+      const allMedia: Array<{ url: string; type: string; isPrimary: boolean; order: number }> = [];
+
+      (processedMedia.images || []).forEach((url: string, index: number) => {
+        allMedia.push({
+          url,
+          type: 'image',
+          isPrimary: index === 0,
+          order: index,
+        });
+      });
+
+      (processedMedia.videos || []).forEach((url: string, index: number) => {
+        allMedia.push({
+          url,
+          type: 'video',
+          isPrimary: false,
+          order: (processedMedia.images?.length || 0) + index,
+        });
+      });
+
       if (allMedia.length > 0) {
         await prisma.productMedia.createMany({
           data: allMedia.map((m) => ({
@@ -573,19 +715,51 @@ export const updateProduct = catchAsync(
           });
         } else {
           // Create new active offer (without banner)
-          await prisma.offer.create({
-            data: {
-              title: `Discount on ${name || existingProduct.name}`,
-              description: `Automatic discount for ${name || existingProduct.name}`,
-              discountPercent: numDiscount,
-              targetType: "product",
-              targetId: id,
-              targetName: name || existingProduct.name,
-              isActive: true,
-              showBanner: false,
-              startDate: now, // Start now
-            },
-          });
+          try {
+            await prisma.offer.create({
+              data: {
+                title: `Discount on ${name || existingProduct.name}`,
+                description: `Automatic discount for ${name || existingProduct.name}`,
+                discountPercent: numDiscount,
+                targetType: "product",
+                targetId: id,
+                targetName: name || existingProduct.name,
+                isActive: true,
+                showBanner: false,
+                startDate: now, // Start now
+              },
+            });
+          } catch (error: any) {
+            // Handle sequence out-of-sync error
+            // P2002 is unique constraint violation, and if it's on the 'id' field,
+            // it's likely a sequence issue
+            const isIdConstraintError = 
+              error.code === 'P2002' && 
+              (error.meta?.target?.includes('id') || 
+               error.message?.includes('Unique constraint failed on the fields: (`id`)'));
+            
+            if (isIdConstraintError) {
+              console.warn('⚠️  Offer sequence out of sync, fixing...');
+              await fixOfferSequence();
+              // Retry the create operation
+              await prisma.offer.create({
+                data: {
+                  title: `Discount on ${name || existingProduct.name}`,
+                  description: `Automatic discount for ${name || existingProduct.name}`,
+                  discountPercent: numDiscount,
+                  targetType: "product",
+                  targetId: id,
+                  targetName: name || existingProduct.name,
+                  isActive: true,
+                  showBanner: false,
+                  startDate: now, // Start now
+                },
+              });
+            } else {
+              // Re-throw if it's a different error
+              throw error;
+            }
+          }
         }
       } else {
         // Discount is 0, deactivate any active offers for this product
@@ -614,7 +788,54 @@ export const updateProduct = catchAsync(
     });
   }
 );
-export const deleteProduct = factory.deleteOne(prisma.product);
+export const deleteProduct = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const productId = parseInt(req.params.id);
+
+    if (isNaN(productId)) {
+      return next(new AppError("Invalid product ID", 400));
+    }
+
+    // Check if product exists
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return next(new AppError("Product not found", 404));
+    }
+
+    // Delete related records first to avoid foreign key constraint violations
+    // Delete cart items that reference this product
+    await prisma.cartItem.deleteMany({
+      where: { productId },
+    });
+
+    // Delete order items that reference this product (but keep the orders)
+    await prisma.orderItem.deleteMany({
+      where: { productId },
+    });
+
+    // Delete reviews that reference this product
+    await prisma.review.deleteMany({
+      where: { productId },
+    });
+
+    // Note: ProductMedia, OfferProduct, and ProductSize will be deleted automatically
+    // due to cascade delete constraints in the schema
+
+    // Finally, delete the product
+    await prisma.product.delete({
+      where: { id: productId },
+    });
+
+    res.status(204).json({
+      status: "success",
+      requestedAt: (req as any).requestTime,
+      data: null,
+    });
+  }
+);
 
 // Additional logic
 export const getCategories = catchAsync(
@@ -877,6 +1098,289 @@ export const getDiscountedProducts = catchAsync(
       data: {
         data: discountedProducts,
       },
+    });
+  }
+);
+
+// Size Management Functions
+// Get all sizes for a product
+export const getProductSizes = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const productId = parseInt(req.params.id);
+    
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return next(new AppError("Product not found", 404));
+    }
+
+    const sizes = await prisma.productSize.findMany({
+      where: { productId },
+      orderBy: { size: 'asc' },
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: { sizes },
+    });
+  }
+);
+
+// Add or update a size for a product
+export const addProductSize = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const productId = parseInt(req.params.id);
+    const { size, stock } = req.body;
+
+    if (!size || stock === undefined) {
+      return next(new AppError("Please provide size and stock", 400));
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return next(new AppError("Product not found", 404));
+    }
+
+    // Upsert size (create or update if exists)
+    const productSize = await prisma.productSize.upsert({
+      where: {
+        productId_size: {
+          productId,
+          size: size.trim(),
+        },
+      },
+      update: {
+        stock: parseInt(stock),
+      },
+      create: {
+        productId,
+        size: size.trim(),
+        stock: parseInt(stock),
+      },
+    });
+
+    // Update product total stock if sizeEnabled is true
+    if (product.sizeEnabled) {
+      const allSizes = await prisma.productSize.findMany({
+        where: { productId },
+      });
+      const totalStock = allSizes.reduce((sum, s) => sum + s.stock, 0);
+      
+      await prisma.product.update({
+        where: { id: productId },
+        data: { stock: totalStock },
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: { size: productSize },
+    });
+  }
+);
+
+// Delete a size from a product
+export const deleteProductSize = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const productId = parseInt(req.params.id);
+    const { size } = req.body;
+
+    if (!size) {
+      return next(new AppError("Please provide size", 400));
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return next(new AppError("Product not found", 404));
+    }
+
+    await prisma.productSize.deleteMany({
+      where: {
+        productId,
+        size: size.trim(),
+      },
+    });
+
+    // Update product total stock if sizeEnabled is true
+    if (product.sizeEnabled) {
+      const allSizes = await prisma.productSize.findMany({
+        where: { productId },
+      });
+      const totalStock = allSizes.reduce((sum, s) => sum + s.stock, 0);
+      
+      await prisma.product.update({
+        where: { id: productId },
+        data: { stock: totalStock },
+      });
+    }
+
+    res.status(204).json({
+      status: "success",
+      data: null,
+    });
+  }
+);
+
+// Toggle size enabled for a product
+export const toggleSizeEnabled = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const productId = parseInt(req.params.id);
+    const { sizeEnabled } = req.body;
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return next(new AppError("Product not found", 404));
+    }
+
+    // If enabling sizes, calculate total stock from sizes
+    let newStock = product.stock;
+    if (sizeEnabled) {
+      const allSizes = await prisma.productSize.findMany({
+        where: { productId },
+      });
+      newStock = allSizes.reduce((sum, s) => sum + s.stock, 0);
+    }
+
+    const updatedProduct = await prisma.product.update({
+      where: { id: productId },
+      data: {
+        sizeEnabled: sizeEnabled === true || sizeEnabled === "true",
+        stock: newStock,
+      },
+      include: {
+        sizes: {
+          orderBy: { size: 'asc' },
+        },
+      },
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: { product: updatedProduct },
+    });
+  }
+);
+
+// Archive product
+export const archiveProduct = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const productId = parseInt(req.params.id);
+
+    if (isNaN(productId)) {
+      return next(new AppError("Invalid product ID", 400));
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return next(new AppError("Product not found", 404));
+    }
+
+    const updatedProduct = await prisma.product.update({
+      where: { id: productId },
+      data: { isArchived: true },
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: { product: updatedProduct },
+    });
+  }
+);
+
+// Unarchive product
+export const unarchiveProduct = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const productId = parseInt(req.params.id);
+
+    if (isNaN(productId)) {
+      return next(new AppError("Invalid product ID", 400));
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return next(new AppError("Product not found", 404));
+    }
+
+    const updatedProduct = await prisma.product.update({
+      where: { id: productId },
+      data: { isArchived: false },
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: { product: updatedProduct },
+    });
+  }
+);
+
+// Get archived products (admin only)
+export const getArchivedProducts = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const features = new APIFeatures(req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+
+    const whereClause = {
+      ...features.prismaQuery.where,
+      isArchived: true,
+    };
+
+    const docs = await prisma.product.findMany({
+      ...features.prismaQuery,
+      where: whereClause,
+      include: {
+        _count: {
+          select: { reviews: true },
+        },
+        reviews: {
+          select: { rating: true },
+        },
+        media: {
+          orderBy: { order: "asc" },
+        },
+      },
+    });
+
+    const enrichedDocs = docs.map((doc: any) => {
+      const reviewCount = doc._count.reviews;
+      const totalRating = doc.reviews.reduce(
+        (acc: number, rev: any) => acc + rev.rating,
+        0
+      );
+      const averageRating =
+        reviewCount > 0 ? Number((totalRating / reviewCount).toFixed(1)) : 0;
+
+      const { reviews, _count, ...rest } = doc as any;
+      return {
+        ...rest,
+        reviewCount,
+        averageRating,
+      };
+    });
+
+    res.status(200).json({
+      status: "success",
+      results: enrichedDocs.length,
+      data: { data: enrichedDocs },
     });
   }
 );

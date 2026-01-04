@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Your Order</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #ffffff;
+            background-color: #000000;
+            padding: 0;
+            margin: 0;
+        }
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #000000;
+        }
+        .email-container {
+            background-color: #000000;
+            padding: 40px 30px;
+        }
+      .header {
+        text-align: center;
+        padding-bottom: 30px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 40px;
+        position: relative;
+      }
+      .icon-container {
+        margin-bottom: 25px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .icon-container img {
+        width: 48px;
+        height: 48px;
+        max-width: 48px;
+        max-height: 48px;
+        object-fit: contain;
+        border-radius: 8px;
+        display: block;
+      }
+        .header-text {
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            text-transform: uppercase;
+            margin: 0;
+        }
+        .urgency-banner {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000000;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            font-weight: 700;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #a1a1aa;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
+            color: #000000;
+            padding: 18px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 900;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: 30px 0;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 255, 255, 0.3);
+        }
+        .items-section {
+            margin: 40px 0;
+        }
+        .section-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: center;
+        }
+        .cart-item {
+            background-color: #18181b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        .item-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .item-meta {
+            font-size: 14px;
+            color: #a1a1aa;
+            margin-bottom: 8px;
+        }
+        .item-price {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+        .total-section {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 40px 0;
+            text-align: center;
+        }
+        .total-label {
+            font-size: 16px;
+            color: #a1a1aa;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .total-amount {
+            font-size: 42px;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+        .benefits-box {
+            background-color: #18181b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        .benefits-box h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .benefit-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0;
+            color: #a1a1aa;
+            font-size: 14px;
+        }
+        .benefit-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+        .footer {
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            color: #71717a;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .footer a {
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            margin: 30px 0;
+        }
+        .cta-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                padding: 30px 20px;
+            }
+            .header-text {
+                font-size: 24px;
+            }
+            .cart-item {
+                flex-direction: column;
+                text-align: center;
+            }
+            .item-image {
+                width: 150px;
+                height: 150px;
+            }
+            .total-amount {
+                font-size: 36px;
+            }
+            .cta-button {
+                padding: 16px 30px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-container">
+            <div class="header">
+                {{#if appIcon}}
+                <div class="icon-container">
+                    <img src="{{appIcon}}" alt="{{appName}}" />
+                </div>
+                {{/if}}
+                <h1 class="header-text">You're Almost There! 🛍️</h1>
+            </div>
+            
+            <div class="urgency-banner">
+                ⚡ Don't Miss Out - Complete Your Order Now!
+            </div>
+            
+            <div class="greeting">
+                <p>Hi <strong>{{customerName}}</strong>,</p>
+                <p style="margin-top: 15px;">We noticed you left some amazing items in your cart! We've saved them for you, but they won't stay there forever.</p>
+                <p style="margin-top: 15px;">Complete your purchase now and get your favorite items delivered to your door!</p>
+            </div>
+            
+            <div class="items-section">
+                <h2 class="section-title">Your Saved Items</h2>
+                {{#each items}}
+                <div class="cart-item">
+                    <img src="{{this.image}}" alt="{{this.name}}" class="item-image" />
+                    <div class="item-details">
+                        <div class="item-name">{{this.name}}</div>
+                        <div class="item-meta">Quantity: {{this.quantity}}{{#if this.size}} • Size: {{this.size}}{{/if}}</div>
+                        <div class="item-price">${{this.total}}</div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+            
+            <div class="total-section">
+                <div class="total-label">Total Amount</div>
+                <div class="total-amount">${{totalAmount}}</div>
+            </div>
+            
+            <div class="cta-container">
+                <a href="{{cartUrl}}" class="cta-button">Complete Your Order Now →</a>
+            </div>
+            
+            <div class="benefits-box">
+                <h3>Why Complete Your Order?</h3>
+                <div class="benefit-item">
+                    <span class="benefit-icon">🚚</span>
+                    <span><strong>Fast & Free Shipping</strong> - Get your items delivered quickly</span>
+                </div>
+                <div class="benefit-item">
+                    <span class="benefit-icon">🔒</span>
+                    <span><strong>Secure Checkout</strong> - Your payment information is safe</span>
+                </div>
+                <div class="benefit-item">
+                    <span class="benefit-icon">↩️</span>
+                    <span><strong>Easy Returns</strong> - Not satisfied? Return within 30 days</span>
+                </div>
+                <div class="benefit-item">
+                    <span class="benefit-icon">⭐</span>
+                    <span><strong>Quality Guaranteed</strong> - Premium products you'll love</span>
+                </div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="footer">
+                <p>Questions? We're here to help! Contact us at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a></p>
+                <p style="margin-top: 20px; color: #a1a1aa;">Happy Shopping!<br><strong style="color: #ffffff;">{{appName}} Team</strong></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

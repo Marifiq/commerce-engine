@@ -2,7 +2,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "../../../utils/api";
+import { apiFetch } from '@/lib/utils/api';
 import {
   Search,
   Eye,
@@ -38,12 +38,11 @@ const statusColors: Record<string, string> = {
     "bg-zinc-50 text-zinc-400 border-2 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-500 dark:border-zinc-800",
 };
 
-import { useToast } from "@/app/components/ToastContext";
-import { Pagination } from "@/app/components/Pagination";
-import { EditOrderModal } from "@/app/components/EditOrderModal";
-import { resolveImageUrl } from "../../../utils/imageUtils";
-import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import Skeleton from "../../components/ui/Skeleton";
+import { useToast } from "@/contexts";
+import { Pagination } from "@/components/ui";
+import { EditOrderModal } from "@/components/admin";
+import { resolveImageUrl } from "@/lib/utils/imageUtils";
+import { LoadingSpinner, Skeleton } from "@/components/ui";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -52,6 +51,7 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<string | number | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [estimatedDeliveryDays, setEstimatedDeliveryDays] = useState<string>("");
   const { showToast } = useToast();
   const router = useRouter();
 
@@ -77,6 +77,13 @@ export default function OrdersPage() {
       }
     }
   }, [orders, initialOrderId, loading]);
+
+  // Clear estimated delivery days when selected order changes
+  useEffect(() => {
+    if (!selectedOrder) {
+      setEstimatedDeliveryDays("");
+    }
+  }, [selectedOrder]);
 
   const fetchOrders = async () => {
     try {
@@ -126,18 +133,27 @@ export default function OrdersPage() {
 
   const handleUpdateStatus = async (
     orderId: string | number,
-    newStatus: string
+    newStatus: string,
+    deliveryDays?: string
   ) => {
     setUpdatingId(orderId);
     try {
+      const body: any = { status: newStatus };
+      if (newStatus === "shipped" && deliveryDays !== undefined && deliveryDays !== "") {
+        body.estimatedDeliveryDays = parseInt(deliveryDays);
+      }
       await apiFetch(`/admin/orders/${orderId}`, {
         method: "PATCH",
-        body: { status: newStatus },
+        body,
       });
       await fetchOrders();
       if (selectedOrder?.id === orderId) {
         // Refresh the order details
         await fetchOrderDetails(orderId);
+      }
+      // Clear the estimated delivery days input if we just shipped
+      if (newStatus === "shipped") {
+        setEstimatedDeliveryDays("");
       }
       showToast(
         `Order status updated to ${newStatus.toUpperCase()}`,
@@ -526,37 +542,62 @@ export default function OrdersPage() {
               </div>
 
               {/* Actions Footer */}
-              <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row gap-3">
-                {selectedOrder.status === "pending" && (
-                  <button
-                    onClick={() => handleEditOrder(selectedOrder)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
-                  >
-                    <Edit2 size={20} /> Edit Order
-                  </button>
+              <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 space-y-4">
+                {selectedOrder.status !== "shipped" && selectedOrder.status !== "delivered" && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                      Estimated Delivery Days
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Enter days (e.g., 3-5)"
+                      value={estimatedDeliveryDays}
+                      onChange={(e) => setEstimatedDeliveryDays(e.target.value)}
+                      className="px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent outline-none transition-all text-sm"
+                    />
+                  </div>
                 )}
-                <button
-                  onClick={() =>
-                    handleUpdateStatus(selectedOrder.id, "shipped")
-                  }
-                  disabled={
-                    selectedOrder.status === "shipped" || updatingId !== null
-                  }
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  <Truck size={20} /> Mark as Shipped
-                </button>
-                <button
-                  onClick={() =>
-                    handleUpdateStatus(selectedOrder.id, "delivered")
-                  }
-                  disabled={
-                    selectedOrder.status === "delivered" || updatingId !== null
-                  }
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase tracking-widest text-[10px] hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-black/5"
-                >
-                  <CheckCircle size={20} /> Mark as Delivered
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {selectedOrder.status === "pending" && (
+                    <button
+                      onClick={() => handleEditOrder(selectedOrder)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
+                    >
+                      <Edit2 size={20} /> Edit Order
+                    </button>
+                  )}
+                  <button
+                    onClick={() =>
+                      handleUpdateStatus(selectedOrder.id, "shipped", estimatedDeliveryDays)
+                    }
+                    disabled={
+                      selectedOrder.status === "shipped" || updatingId === selectedOrder.id
+                    }
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {updatingId === selectedOrder.id ? (
+                      <>
+                        <LoadingSpinner size="small" /> Marking as Shipped...
+                      </>
+                    ) : (
+                      <>
+                        <Truck size={20} /> Mark as Shipped
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleUpdateStatus(selectedOrder.id, "delivered")
+                    }
+                    disabled={
+                      selectedOrder.status === "delivered" || updatingId === selectedOrder.id
+                    }
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase tracking-widest text-[10px] hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-black/5"
+                  >
+                    <CheckCircle size={20} /> Mark as Delivered
+                  </button>
+                </div>
               </div>
             </div>
           </div>

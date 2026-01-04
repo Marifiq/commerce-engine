@@ -3,34 +3,298 @@ import prisma from "../db.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/appError.js";
 import { UserRequest } from "../types.js";
+import Email from "../utils/email.js";
 
 // Get dashboard statistics
 export const getStats = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
-  // Get total revenue from all orders
+  // Get all orders with dates and userId
   const orders = await prisma.order.findMany({
     select: {
       totalAmount: true,
+      status: true,
+      createdAt: true,
+      userId: true,
+    },
+    orderBy: {
+      createdAt: 'asc',
     },
   });
 
   const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-
-  // Get total orders count
-  const totalOrders = await prisma.order.count();
-
-  // Get total products count
+  const totalOrders = orders.length;
   const totalProducts = await prisma.product.count();
-
-  // Get total users count
   const totalUsers = await prisma.user.count();
+
+  // Calculate revenue for last 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const recentRevenue = orders
+    .filter(order => new Date(order.createdAt) >= thirtyDaysAgo)
+    .reduce((sum, order) => sum + order.totalAmount, 0);
+
+  // Calculate revenue for last 7 days
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const weekRevenue = orders
+    .filter(order => new Date(order.createdAt) >= sevenDaysAgo)
+    .reduce((sum, order) => sum + order.totalAmount, 0);
+
+  // Get orders by status
+  const ordersByStatus = orders.reduce((acc, order) => {
+    acc[order.status] = (acc[order.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Get revenue over last 12 months
+  const monthlyRevenue: Record<string, number> = {};
+  orders.forEach(order => {
+    const date = new Date(order.createdAt);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + order.totalAmount;
+  });
+
+  // Get revenue over last 30 days (daily)
+  const dailyRevenue: Record<string, number> = {};
+  const last30Days = Array.from({ length: 30 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (29 - i));
+    return date.toISOString().split('T')[0];
+  });
+
+  last30Days.forEach(date => {
+    dailyRevenue[date] = 0;
+  });
+
+  orders
+    .filter(order => {
+      const orderDate = new Date(order.createdAt).toISOString().split('T')[0];
+      return last30Days.includes(orderDate);
+    })
+    .forEach(order => {
+      const date = new Date(order.createdAt).toISOString().split('T')[0];
+      dailyRevenue[date] = (dailyRevenue[date] || 0) + order.totalAmount;
+    });
+
+  // Get orders count over last 30 days (daily)
+  const dailyOrders: Record<string, number> = {};
+  last30Days.forEach(date => {
+    dailyOrders[date] = 0;
+  });
+
+  orders
+    .filter(order => {
+      const orderDate = new Date(order.createdAt).toISOString().split('T')[0];
+      return last30Days.includes(orderDate);
+    })
+    .forEach(order => {
+      const date = new Date(order.createdAt).toISOString().split('T')[0];
+      dailyOrders[date] = (dailyOrders[date] || 0) + 1;
+    });
+
+  // Get user growth over last 12 months
+  const users = await prisma.user.findMany({
+    select: {
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  });
+
+  const monthlyUsers: Record<string, number> = {};
+  users.forEach(user => {
+    const date = new Date(user.createdAt);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    monthlyUsers[monthKey] = (monthlyUsers[monthKey] || 0) + 1;
+  });
+
+  // Get products by category
+  const products = await prisma.product.findMany({
+    select: {
+      category: true,
+    },
+  });
+
+  const productsByCategory = products.reduce((acc, product) => {
+    acc[product.category] = (acc[product.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Get revenue by category
+  const orderItems = await prisma.orderItem.findMany({
+    include: {
+      product: {
+        select: {
+          category: true,
+        },
+      },
+      order: {
+        select: {
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  const revenueByCategory: Record<string, number> = {};
+  orderItems.forEach(item => {
+    const category = item.product.category;
+    revenueByCategory[category] = (revenueByCategory[category] || 0) + (item.price * item.quantity);
+  });
+
+  // Get orders by category (count unique orders per category)
+  const ordersByCategory: Record<string, number> = {};
+  const categoryOrderMap = new Map<string, Set<number>>();
+  
+  orderItems.forEach(item => {
+    const category = item.product.category;
+    const orderId = item.orderId;
+    
+    if (!categoryOrderMap.has(category)) {
+      categoryOrderMap.set(category, new Set());
+    }
+    categoryOrderMap.get(category)!.add(orderId);
+  });
+  
+  categoryOrderMap.forEach((orderSet, category) => {
+    ordersByCategory[category] = orderSet.size;
+  });
+
+  // Get top products by revenue
+  const productRevenue: Record<number, { name: string; revenue: number; quantity: number }> = {};
+  const productDetails = await prisma.product.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+  const productMap = new Map(productDetails.map(p => [p.id, p.name]));
+
+  orderItems.forEach(item => {
+    const productId = item.productId;
+    const productName = productMap.get(productId) || 'Unknown';
+    if (!productRevenue[productId]) {
+      productRevenue[productId] = {
+        name: productName,
+        revenue: 0,
+        quantity: 0,
+      };
+    }
+    productRevenue[productId].revenue += item.price * item.quantity;
+    productRevenue[productId].quantity += item.quantity;
+  });
+
+  const topProducts = Object.entries(productRevenue)
+    .map(([id, data]) => ({ id: parseInt(id), ...data }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+  // Get abandoned carts count
+  const abandonedCarts = await prisma.cart.findMany({
+    where: {
+      items: {
+        some: {},
+      },
+    },
+    include: {
+      items: {
+        include: {
+          product: {
+            select: {
+              price: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const abandonedCartsValue = abandonedCarts.reduce((sum, cart) => {
+    return sum + cart.items.reduce((itemSum, item) => {
+      return itemSum + (item.product.price * item.quantity);
+    }, 0);
+  }, 0);
+
+  // Get average order value
+  const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+  // Get pending orders count
+  const pendingOrders = orders.filter(o => o.status === 'pending').length;
+  const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'delivered').length;
+
+  // Get orders by user type (signed-up vs guest) over last 30 days
+  const ordersByUserType: Record<string, { signedUp: number; guest: number }> = {};
+  last30Days.forEach(date => {
+    ordersByUserType[date] = { signedUp: 0, guest: 0 };
+  });
+
+  orders
+    .filter(order => {
+      const orderDate = new Date(order.createdAt).toISOString().split('T')[0];
+      return last30Days.includes(orderDate);
+    })
+    .forEach(order => {
+      const date = new Date(order.createdAt).toISOString().split('T')[0];
+      if (order.userId !== null) {
+        ordersByUserType[date].signedUp += 1;
+      } else {
+        ordersByUserType[date].guest += 1;
+      }
+    });
+
+  // Get newsletter subscribers over last 30 days (daily cumulative count)
+  const newsletterSubscribers = await prisma.newsletterSubscriber.findMany({
+    select: {
+      createdAt: true,
+      isActive: true,
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  });
+
+  const dailyNewsletterSubscribers: Record<string, number> = {};
+  last30Days.forEach(date => {
+    dailyNewsletterSubscribers[date] = 0;
+  });
+
+  // Calculate cumulative count of active subscribers up to each date
+  last30Days.forEach(date => {
+    const dateObj = new Date(date);
+    const count = newsletterSubscribers.filter(sub => {
+      const subDate = new Date(sub.createdAt).toISOString().split('T')[0];
+      return subDate <= date && sub.isActive;
+    }).length;
+    dailyNewsletterSubscribers[date] = count;
+  });
 
   res.status(200).json({
     status: "success",
     data: {
+      // Basic stats
       totalRevenue,
       totalOrders,
       totalProducts,
       totalUsers,
+      recentRevenue,
+      weekRevenue,
+      averageOrderValue,
+      pendingOrders,
+      completedOrders,
+      
+      // Chart data
+      ordersByStatus,
+      monthlyRevenue,
+      dailyRevenue,
+      dailyOrders,
+      monthlyUsers,
+      productsByCategory,
+      revenueByCategory,
+      ordersByCategory,
+      topProducts,
+      abandonedCarts: abandonedCarts.length,
+      ordersByUserType,
+      dailyNewsletterSubscribers,
     },
   });
 });
@@ -96,15 +360,15 @@ export const getOrder = catchAsync(async (req: UserRequest, res: Response, next:
 
 // Update order status (admin)
 export const updateOrderStatus = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
-  const { status } = req.body;
+  const { status, estimatedDeliveryDays } = req.body;
 
   if (!status) {
     return next(new AppError("Please provide order status", 400));
   }
 
-  const order = await prisma.order.update({
+  // Get the existing order to check previous status
+  const existingOrder = await prisma.order.findUnique({
     where: { id: parseInt(req.params.id) },
-    data: { status },
     include: {
       user: {
         select: {
@@ -115,11 +379,63 @@ export const updateOrderStatus = catchAsync(async (req: UserRequest, res: Respon
       },
       items: {
         include: {
-          product: true,
+          product: {
+            select: {
+              name: true,
+            },
+          },
         },
       },
     },
   });
+
+  if (!existingOrder) {
+    return next(new AppError("Order not found", 404));
+  }
+
+  // Prepare update data
+  const updateData: any = { status };
+  
+  // If marking as shipped, include estimatedDeliveryDays if provided
+  if (status === "shipped" && estimatedDeliveryDays !== undefined) {
+    updateData.estimatedDeliveryDays = parseInt(estimatedDeliveryDays);
+  }
+
+  const order = await prisma.order.update({
+    where: { id: parseInt(req.params.id) },
+    data: updateData,
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      items: {
+        include: {
+          product: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Send shipping email if status changed to "shipped"
+  if (status === "shipped" && existingOrder.status !== "shipped") {
+    try {
+      if (order.user && order.user.email) {
+        const email = new Email(order.user, '');
+        await email.sendOrderShipped(order, order.user);
+      }
+    } catch (error) {
+      console.error('Failed to send shipping email:', error);
+      // Don't fail the request if email fails
+    }
+  }
 
   res.status(200).json({
     status: "success",
@@ -319,7 +635,40 @@ export const updateOrder = catchAsync(async (req: UserRequest, res: Response, ne
 
 // Get all users (admin)
 export const getAllUsers = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
+  const { search } = req.query;
+  
+  const where: any = {};
+  
+  // Add search functionality
+  if (search && typeof search === 'string') {
+    const searchTerm = search.trim();
+    where.OR = [
+      { name: { contains: searchTerm, mode: 'insensitive' } },
+      { email: { contains: searchTerm, mode: 'insensitive' } },
+    ];
+    
+    // Try to search by phone number in orders if it looks like a phone number
+    if (/^[\d\s\-\+\(\)]+$/.test(searchTerm)) {
+      // Search in orders for phone number
+      const ordersWithPhone = await prisma.order.findMany({
+        where: {
+          phoneNumber: { contains: searchTerm, mode: 'insensitive' },
+        },
+        select: {
+          userId: true,
+        },
+        distinct: ['userId'],
+      });
+      
+      if (ordersWithPhone.length > 0) {
+        const userIds = ordersWithPhone.map(o => o.userId);
+        where.OR.push({ id: { in: userIds } });
+      }
+    }
+  }
+
   const users = await prisma.user.findMany({
+    where,
     select: {
       id: true,
       name: true,
@@ -776,6 +1125,101 @@ export const getAllCarts = catchAsync(async (req: UserRequest, res: Response, ne
     results: carts.length,
     data: { carts },
   });
+});
+
+// Send abandoned cart email (admin)
+export const sendAbandonedCartEmail = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
+  const userId = parseInt(req.params.userId);
+
+  if (isNaN(userId)) {
+    return next(new AppError("Invalid user ID", 400));
+  }
+
+  // Get cart with user and items
+  const cart = await prisma.cart.findUnique({
+    where: { userId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      items: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              discountPercent: true,
+              image: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!cart) {
+    return next(new AppError("Cart not found", 404));
+  }
+
+  if (!cart.user || !cart.user.email) {
+    return next(new AppError("User email not found", 400));
+  }
+
+  if (cart.items.length === 0) {
+    return next(new AppError("Cart is empty", 400));
+  }
+
+  // Prepare cart items for email
+  const cartItems = cart.items.map(item => {
+    // Calculate price with discount if applicable
+    const basePrice = item.product.price;
+    const discountPercent = item.product.discountPercent || 0;
+    const price = basePrice * (1 - discountPercent / 100);
+    const total = price * item.quantity;
+    
+    return {
+      name: item.product.name,
+      quantity: item.quantity,
+      price: price,
+      total: total,
+      size: item.size || undefined,
+      image: item.product.image,
+    };
+  });
+
+  // Calculate total amount
+  const totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
+
+  // Generate cart URL (frontend URL + cart page)
+  const frontendUrl = process.env.FRONTEND_URL || process.env.API_BASE_URL?.replace('/api/v1', '') || 'http://localhost:3000';
+  const cartUrl = `${frontendUrl}/shop?cart=true`;
+
+  try {
+    // Send email
+    const email = new Email(cart.user, '');
+    await email.sendAbandonedCartEmail(cartItems, totalAmount, cartUrl);
+
+    res.status(200).json({
+      status: "success",
+      message: "Abandoned cart email sent successfully",
+    });
+  } catch (error: any) {
+    console.error('Error sending abandoned cart email:', {
+      userId,
+      userEmail: cart.user?.email,
+      error: error.message,
+      stack: error.stack,
+    });
+    
+    // Provide more specific error message
+    const errorMessage = error.message || "Failed to send email";
+    return next(new AppError(errorMessage, 500));
+  }
 });
 
 // Set discount on a product (admin)

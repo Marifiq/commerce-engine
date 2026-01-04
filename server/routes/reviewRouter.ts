@@ -1,6 +1,7 @@
 import express from "express";
 import * as reviewController from "../controllers/reviewController.js";
 import * as authController from "../controllers/authController.js";
+import { processReviewMedia } from "../utils/processReviewMedia.js";
 
 const router = express.Router({ mergeParams: true });
 
@@ -25,6 +26,7 @@ router.post(
   authController.restrictTo("user", "admin"),
   reviewController.setProductUserIds,
   reviewController.checkDuplicateReview,
+  processReviewMedia,
   reviewController.createReview
 );
 
@@ -39,6 +41,7 @@ router.patch(
   "/:id",
   authController.restrictTo("user", "admin"),
   reviewController.checkReviewOwnership,
+  processReviewMedia,
   reviewController.updateReview
 );
 router.delete(

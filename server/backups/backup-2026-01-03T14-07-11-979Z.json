@@ -1,0 +1,698 @@
+{
+  "local_user": [],
+  "remote_user": [
+    {
+      "id": 2,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "password": "$2b$12$YECSkETDY31ifKTN9BGt5uy0i3hLyHbji0rMuqG/FjVWK82PZmY.2",
+      "role": "user",
+      "passwordResetToken": null,
+      "passwordResetExpires": null,
+      "changedPasswordAt": null,
+      "createdAt": "2026-01-02T06:12:32.603Z"
+    },
+    {
+      "id": 3,
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "password": "$2b$12$YECSkETDY31ifKTN9BGt5uy0i3hLyHbji0rMuqG/FjVWK82PZmY.2",
+      "role": "user",
+      "passwordResetToken": null,
+      "passwordResetExpires": null,
+      "changedPasswordAt": null,
+      "createdAt": "2026-01-02T06:12:32.606Z"
+    },
+    {
+      "id": 4,
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "password": "$2b$12$YECSkETDY31ifKTN9BGt5uy0i3hLyHbji0rMuqG/FjVWK82PZmY.2",
+      "role": "user",
+      "passwordResetToken": null,
+      "passwordResetExpires": null,
+      "changedPasswordAt": null,
+      "createdAt": "2026-01-02T06:12:32.609Z"
+    },
+    {
+      "id": 5,
+      "name": "Bob Wilson",
+      "email": "bob@example.com",
+      "password": "$2b$12$YECSkETDY31ifKTN9BGt5uy0i3hLyHbji0rMuqG/FjVWK82PZmY.2",
+      "role": "user",
+      "passwordResetToken": null,
+      "passwordResetExpires": null,
+      "changedPasswordAt": null,
+      "createdAt": "2026-01-02T06:12:32.613Z"
+    },
+    {
+      "id": 1,
+      "name": "Admin User",
+      "email": "admin@example.com",
+      "password": "$2b$12$6cEDldqUk4a7q1LxRdeCr.NUfkFJ1/L007QBnJZREX2vHx3qPI6zG",
+      "role": "admin",
+      "passwordResetToken": null,
+      "passwordResetExpires": null,
+      "changedPasswordAt": null,
+      "createdAt": "2026-01-02T06:12:32.593Z"
+    },
+    {
+      "id": 6,
+      "name": "Muhib Arshad",
+      "email": "muhibarshad123@gmail.com",
+      "password": "$2b$12$NC.M7KlRsKJwSNmQAh81KeFve2UDtwXhe8PIIaU3TBQa6RzSMiv.O",
+      "role": "admin",
+      "passwordResetToken": null,
+      "passwordResetExpires": null,
+      "changedPasswordAt": null,
+      "createdAt": "2026-01-02T07:02:16.705Z"
+    }
+  ],
+  "local_category": [],
+  "remote_category": [
+    {
+      "id": 1,
+      "name": "Men",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/category-1767299500333.webp",
+      "discountPercent": 10,
+      "createdAt": "2026-01-02T06:12:32.617Z"
+    },
+    {
+      "id": 2,
+      "name": "Women",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/category-1767299797057.webp",
+      "discountPercent": 15,
+      "createdAt": "2026-01-02T06:12:32.621Z"
+    },
+    {
+      "id": 4,
+      "name": "new arrival",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/category-1767356652774.webp",
+      "discountPercent": 0,
+      "createdAt": "2026-01-02T12:24:13.402Z"
+    },
+    {
+      "id": 3,
+      "name": "Accessories",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/category-1767299807901.webp",
+      "discountPercent": 0.3,
+      "createdAt": "2026-01-02T06:12:32.623Z"
+    }
+  ],
+  "local_product": [],
+  "remote_product": [
+    {
+      "id": 7,
+      "name": "Loafer shoes",
+      "description": "Nee shoes arrived",
+      "price": 10,
+      "category": "new arrival",
+      "image": "/img/products/product-image-1767383418570-t9wij5.webp",
+      "section": null,
+      "stock": 2,
+      "discountPercent": 0,
+      "sizeEnabled": false,
+      "createdAt": "2026-01-02T12:25:14.793Z"
+    },
+    {
+      "id": 8,
+      "name": "Impedit animi irur",
+      "description": "Enim illum qui labo",
+      "price": 23,
+      "category": "new arrival",
+      "image": "/images/placeholder.jpg",
+      "section": null,
+      "stock": 0,
+      "discountPercent": 27,
+      "sizeEnabled": false,
+      "createdAt": "2026-01-02T20:04:49.161Z"
+    },
+    {
+      "id": 2,
+      "name": "Navy Blue Polo",
+      "description": "Comfortable navy blue polo shirt, perfect for casual outings.",
+      "price": 35.5,
+      "category": "Men",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/download%20(1).jpeg",
+      "section": "New Arrivals",
+      "stock": 30,
+      "discountPercent": 10,
+      "sizeEnabled": false,
+      "createdAt": "2026-01-02T06:12:32.632Z"
+    },
+    {
+      "id": 5,
+      "name": "Denim Jacket",
+      "description": "Classic denim jacket that never goes out of style.",
+      "price": 65,
+      "category": "Women",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/download%20(4).jpeg",
+      "section": "Best Sellers",
+      "stock": 25,
+      "discountPercent": 0,
+      "sizeEnabled": false,
+      "createdAt": "2026-01-02T06:12:32.638Z"
+    },
+    {
+      "id": 1,
+      "name": "Classic White T-Shirt",
+      "description": "A timeless classic white t-shirt made from 100% organic cotton.",
+      "price": 25.99,
+      "category": "Men",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/download.jpeg",
+      "section": "Best Sellers",
+      "stock": 50,
+      "discountPercent": 0,
+      "sizeEnabled": false,
+      "createdAt": "2026-01-02T06:12:32.628Z"
+    },
+    {
+      "id": 6,
+      "name": "Leather Belt",
+      "description": "Premium leather belt for a sophisticated look.",
+      "price": 20,
+      "category": "Accessories",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/download%20(5).jpeg",
+      "section": "New Arrivals",
+      "stock": 5,
+      "discountPercent": 0.3,
+      "sizeEnabled": true,
+      "createdAt": "2026-01-02T06:12:32.639Z"
+    },
+    {
+      "id": 4,
+      "name": "Summer Floral Dress",
+      "description": "Elegant floral dress for a bright summer day.",
+      "price": 55,
+      "category": "Women",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/download%20(3).jpeg",
+      "section": "Trending",
+      "stock": 14,
+      "discountPercent": 15,
+      "sizeEnabled": false,
+      "createdAt": "2026-01-02T06:12:32.636Z"
+    },
+    {
+      "id": 3,
+      "name": "Casual Grey Hoodie",
+      "description": "Soft grey hoodie for those chilly evenings.",
+      "price": 45,
+      "category": "Men",
+      "image": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/download%20(2).jpeg",
+      "section": "Featured",
+      "stock": 8,
+      "discountPercent": 5,
+      "sizeEnabled": false,
+      "createdAt": "2026-01-02T06:12:32.634Z"
+    }
+  ],
+  "local_productMedia": [],
+  "remote_productMedia": [
+    {
+      "id": 21,
+      "productId": 7,
+      "url": "/img/products/product-image-1767383247143-fqhsnt.webp",
+      "type": "image",
+      "isPrimary": true,
+      "order": 0,
+      "createdAt": "2026-01-02T19:50:21.926Z"
+    },
+    {
+      "id": 22,
+      "productId": 7,
+      "url": "/img/products/product-image-1767383418570-t9wij5.webp",
+      "type": "image",
+      "isPrimary": false,
+      "order": 1,
+      "createdAt": "2026-01-02T19:50:21.926Z"
+    },
+    {
+      "id": 23,
+      "productId": 7,
+      "url": "/img/products/product-image-1767383418696-vi1p69.webp",
+      "type": "image",
+      "isPrimary": false,
+      "order": 2,
+      "createdAt": "2026-01-02T19:50:21.926Z"
+    },
+    {
+      "id": 24,
+      "productId": 7,
+      "url": "/img/products/product-image-1767383418763-jh2ks.webp",
+      "type": "image",
+      "isPrimary": false,
+      "order": 3,
+      "createdAt": "2026-01-02T19:50:21.926Z"
+    },
+    {
+      "id": 25,
+      "productId": 7,
+      "url": "/img/videos/product-video-1767383418839-lykcqy.mp4",
+      "type": "video",
+      "isPrimary": false,
+      "order": 4,
+      "createdAt": "2026-01-02T19:50:21.926Z"
+    },
+    {
+      "id": 26,
+      "productId": 6,
+      "url": "https://mttuioegfhymqdqlbmke.supabase.co/storage/v1/object/public/products-and-reviews/images/download%20(5).jpeg",
+      "type": "image",
+      "isPrimary": true,
+      "order": 0,
+      "createdAt": "2026-01-03T10:30:51.080Z"
+    }
+  ],
+  "local_productSize": [],
+  "remote_productSize": [
+    {
+      "id": 1,
+      "productId": 6,
+      "size": "S",
+      "stock": 2,
+      "createdAt": "2026-01-03T10:31:05.002Z",
+      "updatedAt": "2026-01-03T10:31:05.002Z"
+    },
+    {
+      "id": 2,
+      "productId": 6,
+      "size": "XL",
+      "stock": 3,
+      "createdAt": "2026-01-03T10:31:12.180Z",
+      "updatedAt": "2026-01-03T10:31:12.180Z"
+    }
+  ],
+  "local_cart": [],
+  "remote_cart": [
+    {
+      "id": 2,
+      "userId": 2,
+      "updatedAt": "2025-12-30T12:31:05.911Z"
+    },
+    {
+      "id": 3,
+      "userId": 3,
+      "updatedAt": "2025-12-26T12:31:07.805Z"
+    },
+    {
+      "id": 4,
+      "userId": 4,
+      "updatedAt": "2025-12-27T12:31:09.274Z"
+    },
+    {
+      "id": 5,
+      "userId": 5,
+      "updatedAt": "2025-12-31T12:31:10.470Z"
+    },
+    {
+      "id": 6,
+      "userId": 6,
+      "updatedAt": "2026-01-02T19:25:52.358Z"
+    }
+  ],
+  "local_cartItem": [],
+  "remote_cartItem": [
+    {
+      "id": 3,
+      "cartId": 2,
+      "productId": 2,
+      "quantity": 3,
+      "size": null
+    },
+    {
+      "id": 4,
+      "cartId": 2,
+      "productId": 3,
+      "quantity": 2,
+      "size": null
+    },
+    {
+      "id": 5,
+      "cartId": 3,
+      "productId": 4,
+      "quantity": 1,
+      "size": null
+    },
+    {
+      "id": 6,
+      "cartId": 4,
+      "productId": 5,
+      "quantity": 2,
+      "size": null
+    },
+    {
+      "id": 7,
+      "cartId": 5,
+      "productId": 3,
+      "quantity": 3,
+      "size": null
+    },
+    {
+      "id": 8,
+      "cartId": 5,
+      "productId": 7,
+      "quantity": 3,
+      "size": null
+    },
+    {
+      "id": 9,
+      "cartId": 5,
+      "productId": 5,
+      "quantity": 3,
+      "size": null
+    },
+    {
+      "id": 12,
+      "cartId": 6,
+      "productId": 6,
+      "quantity": 1,
+      "size": "XL"
+    },
+    {
+      "id": 13,
+      "cartId": 6,
+      "productId": 5,
+      "quantity": 2,
+      "size": null
+    }
+  ],
+  "local_order": [],
+  "remote_order": [
+    {
+      "id": 3,
+      "userId": 6,
+      "totalAmount": 30,
+      "status": "pending",
+      "shippingAddress": "Street no 1 , raheem town , canal road city Kabirwala District khanewal, Kabirwala, 58250",
+      "paymentMethod": "card",
+      "createdAt": "2026-01-02T19:52:13.039Z"
+    },
+    {
+      "id": 1,
+      "userId": 3,
+      "totalAmount": 291,
+      "status": "delivered",
+      "shippingAddress": "123 Dummy Street, Test City",
+      "paymentMethod": "Credit Card",
+      "createdAt": "2026-01-02T06:12:32.687Z"
+    },
+    {
+      "id": 2,
+      "userId": 6,
+      "totalAmount": 111,
+      "status": "pending",
+      "shippingAddress": "Street no 1 , raheem town , canal road city Kabirwala District khanewal, Kabirwala, 58250",
+      "paymentMethod": "card",
+      "createdAt": "2026-01-02T07:02:46.000Z"
+    }
+  ],
+  "local_orderItem": [],
+  "remote_orderItem": [
+    {
+      "id": 1,
+      "orderId": 1,
+      "productId": 5,
+      "price": 65,
+      "quantity": 2,
+      "size": null
+    },
+    {
+      "id": 2,
+      "orderId": 1,
+      "productId": 3,
+      "price": 45,
+      "quantity": 2,
+      "size": null
+    },
+    {
+      "id": 3,
+      "orderId": 1,
+      "productId": 2,
+      "price": 35.5,
+      "quantity": 2,
+      "size": null
+    },
+    {
+      "id": 12,
+      "orderId": 3,
+      "productId": 6,
+      "price": 20,
+      "quantity": 1,
+      "size": null
+    },
+    {
+      "id": 13,
+      "orderId": 3,
+      "productId": 7,
+      "price": 10,
+      "quantity": 1,
+      "size": null
+    },
+    {
+      "id": 14,
+      "orderId": 2,
+      "productId": 6,
+      "price": 20,
+      "quantity": 1,
+      "size": null
+    },
+    {
+      "id": 15,
+      "orderId": 2,
+      "productId": 4,
+      "price": 55,
+      "quantity": 1,
+      "size": null
+    },
+    {
+      "id": 16,
+      "orderId": 2,
+      "productId": 3,
+      "price": 3,
+      "quantity": 12,
+      "size": null
+    }
+  ],
+  "local_review": [],
+  "remote_review": [
+    {
+      "id": 1,
+      "text": "Great value for money.",
+      "rating": 4,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 1,
+      "userId": 1,
+      "createdAt": "2026-01-02T06:12:32.643Z"
+    },
+    {
+      "id": 2,
+      "text": "Great value for money.",
+      "rating": 4,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 1,
+      "userId": 2,
+      "createdAt": "2026-01-02T06:12:32.648Z"
+    },
+    {
+      "id": 3,
+      "text": "Great value for money.",
+      "rating": 4,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 2,
+      "userId": 4,
+      "createdAt": "2026-01-02T06:12:32.650Z"
+    },
+    {
+      "id": 4,
+      "text": "The color is slightly different from the photos.",
+      "rating": 3,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 2,
+      "userId": 3,
+      "createdAt": "2026-01-02T06:12:32.653Z"
+    },
+    {
+      "id": 5,
+      "text": "The color is slightly different from the photos.",
+      "rating": 3,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 3,
+      "userId": 4,
+      "createdAt": "2026-01-02T06:12:32.655Z"
+    },
+    {
+      "id": 6,
+      "text": "Good product, but the delivery was a bit slow.",
+      "rating": 4,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 4,
+      "userId": 1,
+      "createdAt": "2026-01-02T06:12:32.657Z"
+    },
+    {
+      "id": 7,
+      "text": "Amazing quality! Highly recommended.",
+      "rating": 5,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 4,
+      "userId": 2,
+      "createdAt": "2026-01-02T06:12:32.659Z"
+    },
+    {
+      "id": 8,
+      "text": "Exceptional customer service and great product.",
+      "rating": 5,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 4,
+      "userId": 3,
+      "createdAt": "2026-01-02T06:12:32.662Z"
+    },
+    {
+      "id": 9,
+      "text": "Fits perfectly and feels very comfortable.",
+      "rating": 5,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 5,
+      "userId": 1,
+      "createdAt": "2026-01-02T06:12:32.665Z"
+    },
+    {
+      "id": 10,
+      "text": "Great value for money.",
+      "rating": 4,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 5,
+      "userId": 2,
+      "createdAt": "2026-01-02T06:12:32.667Z"
+    },
+    {
+      "id": 11,
+      "text": "The color is slightly different from the photos.",
+      "rating": 3,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 5,
+      "userId": 3,
+      "createdAt": "2026-01-02T06:12:32.669Z"
+    },
+    {
+      "id": 12,
+      "text": "The color is slightly different from the photos.",
+      "rating": 3,
+      "isApproved": true,
+      "images": [],
+      "videos": [],
+      "productId": 6,
+      "userId": 2,
+      "createdAt": "2026-01-02T06:12:32.671Z"
+    },
+    {
+      "id": 14,
+      "text": "Great value for money.",
+      "rating": 4,
+      "isApproved": false,
+      "images": [],
+      "videos": [],
+      "productId": 6,
+      "userId": 4,
+      "createdAt": "2026-01-02T06:12:32.675Z"
+    },
+    {
+      "id": 13,
+      "text": "The color is slightly different from the photos.",
+      "rating": 3,
+      "isApproved": false,
+      "images": [],
+      "videos": [],
+      "productId": 6,
+      "userId": 3,
+      "createdAt": "2026-01-02T06:12:32.673Z"
+    }
+  ],
+  "local_offer": [],
+  "remote_offer": [
+    {
+      "id": 1,
+      "title": "Summer Sale!",
+      "description": "Get up to 50% off on all summer collections.",
+      "discountPercent": 50,
+      "targetType": "category",
+      "targetId": null,
+      "targetName": "Women",
+      "startDate": null,
+      "endDate": null,
+      "isActive": true,
+      "showBanner": true,
+      "createdAt": "2026-01-02T06:12:32.678Z",
+      "updatedAt": "2026-01-02T06:12:32.678Z"
+    },
+    {
+      "id": 2,
+      "title": "Accessories Blowout",
+      "description": "Flat 20% off on all accessories.",
+      "discountPercent": 20,
+      "targetType": "category",
+      "targetId": null,
+      "targetName": "Accessories",
+      "startDate": null,
+      "endDate": null,
+      "isActive": true,
+      "showBanner": false,
+      "createdAt": "2026-01-02T06:12:32.682Z",
+      "updatedAt": "2026-01-02T06:12:32.682Z"
+    },
+    {
+      "id": 3,
+      "title": "Featured Product Deal",
+      "description": "Special discount on our best-selling Classic White T-Shirt.",
+      "discountPercent": 15,
+      "targetType": "product",
+      "targetId": null,
+      "targetName": "Classic White T-Shirt",
+      "startDate": null,
+      "endDate": null,
+      "isActive": true,
+      "showBanner": true,
+      "createdAt": "2026-01-02T06:12:32.684Z",
+      "updatedAt": "2026-01-02T06:12:32.684Z"
+    },
+    {
+      "id": 4,
+      "title": "Discount on Leather Belt",
+      "description": "Automatic discount for Leather Belt",
+      "discountPercent": 0.3,
+      "targetType": "product",
+      "targetId": 6,
+      "targetName": "Leather Belt",
+      "startDate": "2026-01-02T18:59:25.310Z",
+      "endDate": null,
+      "isActive": true,
+      "showBanner": false,
+      "createdAt": "2026-01-02T18:59:26.324Z",
+      "updatedAt": "2026-01-03T10:30:53.952Z"
+    }
+  ],
+  "local_offerProduct": [],
+  "remote_offerProduct": []
+}

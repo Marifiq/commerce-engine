@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiFetch } from "../../../utils/api";
+import { useEffect, useState, useRef } from "react";
+import { apiFetch } from "@/lib/utils/api";
 import {
   Plus,
   Search,
@@ -14,14 +14,14 @@ import {
   ChevronDown,
   Video,
   Star,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
-import { Product, Category } from "../../../types";
-import { useToast } from "@/app/components/ToastContext";
-import { Modal } from "@/app/components/Modal";
-import { Pagination } from "@/app/components/Pagination";
-import { resolveImageUrl } from "../../../utils/imageUtils";
-import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
-import Skeleton from "@/app/components/ui/Skeleton";
+import { Product, Category } from "@/types";
+import { useToast } from "@/contexts";
+import { Modal, Pagination } from "@/components/ui";
+import { resolveImageUrl } from "@/lib/utils/imageUtils";
+import { LoadingSpinner, Skeleton } from "@/components/ui";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +29,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [showArchived, setShowArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -57,13 +58,19 @@ export default function ProductsPage() {
     image: "/images/placeholder.jpg",
     stock: 0,
     discountPercent: 0,
+    sizeEnabled: false,
   });
+
+  // Size management state
+  const [productSizes, setProductSizes] = useState<Array<{ size: string; stock: number }>>([]);
+  const [newSize, setNewSize] = useState({ size: "", stock: 0 });
 
   // Media upload states
   interface MediaItem {
     id: string;
     file?: File;
-    preview: string;
+    preview: string; // For display (resolved URL)
+    originalUrl?: string; // Original URL from database (for sending back to backend)
     type: "image" | "video";
     isPrimary: boolean;
     order: number;
@@ -85,11 +92,17 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-  }, []);
+  }, [showArchived]);
 
   const fetchProducts = async () => {
     try {
-      const res = await apiFetch("/products");
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (showArchived) {
+        params.append("includeArchived", "true");
+      }
+      const url = `/products${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await apiFetch(url);
       setProducts(res.data.data);
     } catch (error) {
       console.error("Failed to fetch products:", error);
@@ -139,7 +152,7 @@ export default function ProductsPage() {
     }
   };
 
-  const handleOpenModal = (product: Product | null = null) => {
+  const handleOpenModal = async (product: Product | null = null) => {
     if (product) {
       setEditingProduct(product);
       setFormData({
@@ -150,12 +163,27 @@ export default function ProductsPage() {
         image: product.image,
         stock: product.stock || 0,
         discountPercent: product.discountPercent || 0,
+        sizeEnabled: product.sizeEnabled || false,
       });
+      
+      // Load sizes if sizeEnabled
+      if (product.sizeEnabled && product.id) {
+        try {
+          const sizesRes = await apiFetch(`/products/${product.id}/sizes`);
+          setProductSizes(sizesRes.data.sizes || []);
+        } catch (error) {
+          console.error("Failed to load sizes:", error);
+          setProductSizes([]);
+        }
+      } else {
+        setProductSizes([]);
+      }
       // Load existing media if available
       if (product.media && product.media.length > 0) {
         const existingMedia: MediaItem[] = product.media.map((m, index) => ({
           id: `existing-${m.id}`,
-          preview: m.url.startsWith('/') ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '') + m.url : m.url,
+          preview: resolveImageUrl(m.url), // For display
+          originalUrl: m.url, // Original URL from database
           type: m.type as "image" | "video",
           isPrimary: m.isPrimary,
           order: m.order,
@@ -164,7 +192,8 @@ export default function ProductsPage() {
       } else {
         setMediaItems([{
           id: 'existing-main',
-          preview: product.image,
+          preview: resolveImageUrl(product.image), // For display
+          originalUrl: product.image, // Original URL from database
           type: "image",
           isPrimary: true,
           order: 0,
@@ -180,8 +209,11 @@ export default function ProductsPage() {
         image: "/images/placeholder.jpg",
         stock: 0,
         discountPercent: 0,
+        sizeEnabled: false,
       });
       setMediaItems([]);
+      setProductSizes([]);
+      setNewSize({ size: "", stock: 0 });
     }
     setIsModalOpen(true);
   };
@@ -210,15 +242,28 @@ export default function ProductsPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const preview = reader.result as string;
+        
+        // Check if this will be the only image after adding
+        const allImagesAfterAdd = [...mediaItems.filter(item => item.type === "image"), { type } as MediaItem];
+        const willBeOnlyImage = type === "image" && allImagesAfterAdd.length === 1;
+        
         const newItem: MediaItem = {
           id: `new-${Date.now()}-${Math.random()}`,
           file,
           preview,
           type,
-          isPrimary: mediaItems.length === 0, // First item is primary by default
+          // If this is the first item OR if this will be the only image, make it primary
+          isPrimary: mediaItems.length === 0 || willBeOnlyImage,
           order: mediaItems.length,
         };
-        setMediaItems([...mediaItems, newItem]);
+        
+        // If this will be the only image, unset primary from other items
+        if (willBeOnlyImage) {
+          const updatedItems = mediaItems.map(item => ({ ...item, isPrimary: false }));
+          setMediaItems([...updatedItems, newItem]);
+        } else {
+          setMediaItems([...mediaItems, newItem]);
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -278,6 +323,7 @@ export default function ProductsPage() {
       formDataToSend.append("description", formData.description || "");
       formDataToSend.append("stock", formData.stock.toString());
       formDataToSend.append("discountPercent", (formData.discountPercent || 0).toString());
+      formDataToSend.append("sizeEnabled", formData.sizeEnabled.toString());
 
       // Separate items with files (new uploads) and items without files (existing)
       const itemsWithFiles = mediaItems.filter(item => item.file);
@@ -299,33 +345,41 @@ export default function ProductsPage() {
         }
       });
 
-      // Create metadata array matching the file upload order
-      // First images, then videos, matching backend processing order
-      const mediaMetadata: Array<{ type: string; isPrimary: boolean; order: number }> = [];
+      // Create metadata array for ALL media (existing + new), sorted by order
+      // This includes both new uploads and existing media
+      const allMediaSorted = [...mediaItems].sort((a, b) => a.order - b.order);
+      const mediaMetadata: Array<{ 
+        type: string; 
+        isPrimary: boolean; 
+        order: number;
+        url?: string; // For existing media
+        isNew?: boolean; // Flag to indicate if it's a new upload
+      }> = [];
       
-      // Add metadata for images (matching upload order)
-      imageFiles.forEach((item) => {
-        mediaMetadata.push({
-          type: 'image',
-          isPrimary: item.isPrimary,
-          order: item.order,
-        });
+      // Process all media in order
+      allMediaSorted.forEach((item) => {
+        if (item.file) {
+          // New upload - will be processed by backend
+          mediaMetadata.push({
+            type: item.type,
+            isPrimary: item.isPrimary,
+            order: item.order,
+            isNew: true,
+          });
+        } else {
+          // Existing media - include original URL from database
+          mediaMetadata.push({
+            type: item.type,
+            isPrimary: item.isPrimary,
+            order: item.order,
+            url: item.originalUrl || item.preview, // Use originalUrl if available, fallback to preview
+            isNew: false,
+          });
+        }
       });
 
-      // Add metadata for videos (matching upload order)
-      videoFiles.forEach((item) => {
-        mediaMetadata.push({
-          type: 'video',
-          isPrimary: item.isPrimary,
-          order: item.order,
-        });
-      });
-
-      // For existing items without files, include their URLs in a separate field
-      // (Backend will need to handle this - for now, we'll only send new files)
-      if (mediaMetadata.length > 0) {
-        formDataToSend.append("mediaData", JSON.stringify(mediaMetadata));
-      }
+      // Always send mediaData, even if empty, so backend knows to preserve existing media
+      formDataToSend.append("mediaData", JSON.stringify(mediaMetadata));
 
       const url = editingProduct 
         ? `${baseUrl}/products/${editingProduct.id}`
@@ -343,6 +397,31 @@ export default function ProductsPage() {
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.message || "Failed to save product");
+      }
+
+      const productId = editingProduct ? editingProduct.id : data.data.data.id;
+      
+      // Handle size management if sizeEnabled
+      if (formData.sizeEnabled && productId) {
+        // First, toggle size enabled
+        await apiFetch(`/products/${productId}/size-enabled`, {
+          method: "PATCH",
+          body: { sizeEnabled: true },
+        });
+        
+        // Then, save all sizes
+        for (const sizeItem of productSizes) {
+          await apiFetch(`/products/${productId}/sizes`, {
+            method: "POST",
+            body: { size: sizeItem.size, stock: sizeItem.stock },
+          });
+        }
+      } else if (productId) {
+        // Disable sizes if unchecked
+        await apiFetch(`/products/${productId}/size-enabled`, {
+          method: "PATCH",
+          body: { sizeEnabled: false },
+        });
       }
 
       showToast(editingProduct ? "Product updated successfully" : "Product created successfully", "success");
@@ -552,6 +631,28 @@ export default function ProductsPage() {
     }
   };
 
+  const handleArchive = async (id: number) => {
+    try {
+      await apiFetch(`/products/${id}/archive`, { method: "PATCH" });
+      showToast("Product archived successfully", "success");
+      fetchProducts();
+    } catch (error) {
+      console.error("Failed to archive product:", error);
+      showToast("Failed to archive product", "error");
+    }
+  };
+
+  const handleUnarchive = async (id: number) => {
+    try {
+      await apiFetch(`/products/${id}/unarchive`, { method: "PATCH" });
+      showToast("Product unarchived successfully", "success");
+      fetchProducts();
+    } catch (error) {
+      console.error("Failed to unarchive product:", error);
+      showToast("Failed to unarchive product", "error");
+    }
+  };
+
   const [sortBy, setSortBy] = useState<string>("newest");
 
   // ... existing state ...
@@ -564,6 +665,13 @@ export default function ProductsPage() {
 
   const filteredProducts = products
     .filter((p) => {
+      // Archive filter - show all if showArchived is true, otherwise filter out archived
+      if (!showArchived && p.isArchived) {
+        return false;
+      }
+      if (showArchived && !p.isArchived) {
+        return false;
+      }
       // Category filter
       if (selectedCategory && p.category !== selectedCategory) {
         return false;
@@ -604,7 +712,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortBy, selectedCategory]);
+  }, [searchTerm, sortBy, selectedCategory, showArchived]);
 
   return (
     <div className="space-y-6 sm:space-y-10">
@@ -649,6 +757,18 @@ export default function ProductsPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
+            <input
+              type="checkbox"
+              id="showArchived"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              className="w-4 h-4 text-black dark:text-white border-zinc-300 dark:border-zinc-600 rounded focus:ring-2 focus:ring-black dark:focus:ring-white cursor-pointer"
+            />
+            <label htmlFor="showArchived" className="text-sm font-bold text-zinc-900 dark:text-white cursor-pointer whitespace-nowrap">
+              Show Archived
+            </label>
           </div>
           <select
             value={selectedCategory}
@@ -735,20 +855,55 @@ export default function ProductsPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center text-zinc-400">
-                          {product.image ? (
-                            <img
-                              src={resolveImageUrl(product.image)}
-                              alt={product.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <ImageIcon size={20} />
-                          )}
+                        <div className="h-12 w-12 rounded-lg bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center text-zinc-400 relative">
+                          {(() => {
+                            // Get primary image from media, or fallback to product.image
+                            const primaryImage = product.media?.find(m => m.isPrimary && m.type === "image") || 
+                                                 product.media?.find(m => m.type === "image") || 
+                                                 product.media?.[0];
+                            const imageUrl = primaryImage 
+                              ? resolveImageUrl(primaryImage.url) 
+                              : (product.image && product.image.trim() !== '' && product.image !== 'null' && product.image !== 'undefined' 
+                                  ? resolveImageUrl(product.image) 
+                                  : '');
+                            const hasValidImage = imageUrl && imageUrl.trim() !== '' && !imageUrl.includes('undefined') && !imageUrl.includes('null');
+                            
+                            if (!hasValidImage) {
+                              return <ImageIcon size={20} className="text-zinc-400 dark:text-zinc-500" />;
+                            }
+                            
+                            return (
+                              <>
+                                <img
+                                  src={imageUrl}
+                                  alt={product.name}
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    const parent = (e.target as HTMLImageElement).parentElement;
+                                    if (parent) {
+                                      const icon = parent.querySelector('.product-list-icon') as HTMLElement;
+                                      if (icon) icon.style.display = 'flex';
+                                    }
+                                  }}
+                                />
+                                <div className="product-list-icon absolute inset-0 flex items-center justify-center" style={{ display: 'none' }}>
+                                  <ImageIcon size={20} className="text-zinc-400 dark:text-zinc-500" />
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                         <div>
-                          <div className="font-bold text-zinc-900 dark:text-white">
-                            {product.name}
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-zinc-900 dark:text-white">
+                              {product.name}
+                            </span>
+                            {product.isArchived && (
+                              <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+                                Archived
+                              </span>
+                            )}
                           </div>
                           <div className="text-sm text-zinc-500 truncate max-w-[200px]">
                             {product.description}
@@ -799,12 +954,31 @@ export default function ProductsPage() {
                         <button
                           onClick={() => handleOpenModal(product)}
                           className="p-2 text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                          title="Edit"
                         >
                           <Edit2 size={18} />
                         </button>
+                        {product.isArchived ? (
+                          <button
+                            onClick={() => handleUnarchive(product.id)}
+                            className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded-lg transition-colors cursor-pointer"
+                            title="Unarchive"
+                          >
+                            <ArchiveRestore size={18} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleArchive(product.id)}
+                            className="p-2 text-zinc-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 rounded-lg transition-colors cursor-pointer"
+                            title="Archive"
+                          >
+                            <Archive size={18} />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteClick(product.id)}
                           className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors cursor-pointer"
+                          title="Delete"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -918,17 +1092,43 @@ export default function ProductsPage() {
                         Stock Quantity <span className="text-red-500">*</span>
                       </label>
                       <input
-                        type="number"
-                        min="0"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         required
                         className="w-full px-4 py-3 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white transition-all text-zinc-900 dark:text-white outline-none"
-                        value={formData.stock || ""}
+                        value={formData.stock === 0 ? "0" : (formData.stock?.toString() || "")}
                         onChange={(e) => {
-                          const value = e.target.value;
+                          let value = e.target.value;
+                          
+                          // Only allow digits
+                          value = value.replace(/[^0-9]/g, '');
+                          
+                          // Remove leading zeros immediately (except for single "0")
+                          if (value.length > 1 && value.startsWith('0')) {
+                            value = value.replace(/^0+/, '') || '0';
+                          }
+                          
+                          // Parse the value
+                          const parsedValue = value === "" ? 0 : parseInt(value, 10);
+                          const stockValue = isNaN(parsedValue) ? 0 : parsedValue;
+                          
                           setFormData({
                             ...formData,
-                            stock: value === "" ? 0 : parseInt(value) || 0,
+                            stock: stockValue,
                           });
+                        }}
+                        onBlur={(e) => {
+                          // Ensure value is cleaned up on blur
+                          const value = e.target.value;
+                          const parsedValue = value === "" ? 0 : parseInt(value, 10);
+                          const stockValue = isNaN(parsedValue) ? 0 : parsedValue;
+                          if (formData.stock !== stockValue) {
+                            setFormData({
+                              ...formData,
+                              stock: stockValue,
+                            });
+                          }
                         }}
                         placeholder="0"
                       />
@@ -970,6 +1170,97 @@ export default function ProductsPage() {
                       }
                       placeholder="Enter product description..."
                     />
+                  </div>
+
+                  {/* Size Management */}
+                  <div className="border-t border-zinc-200 dark:border-zinc-700 pt-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="block text-sm font-semibold text-zinc-900 dark:text-white">
+                        Enable Size Management
+                      </label>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={formData.sizeEnabled}
+                          onChange={(e) => {
+                            setFormData({ ...formData, sizeEnabled: e.target.checked });
+                            if (!e.target.checked) {
+                              setProductSizes([]);
+                            }
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-zinc-300 dark:peer-focus:ring-zinc-800 rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-zinc-600 peer-checked:bg-black dark:peer-checked:bg-white"></div>
+                      </label>
+                    </div>
+
+                    {formData.sizeEnabled && (
+                      <div className="space-y-4">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Size (e.g., S, M, L, XL)"
+                            className="flex-1 px-4 py-2 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white transition-all text-zinc-900 dark:text-white outline-none"
+                            value={newSize.size}
+                            onChange={(e) => setNewSize({ ...newSize, size: e.target.value.toUpperCase() })}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Stock"
+                            className="w-24 px-4 py-2 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white transition-all text-zinc-900 dark:text-white outline-none"
+                            value={newSize.stock || ""}
+                            onChange={(e) => setNewSize({ ...newSize, stock: parseInt(e.target.value) || 0 })}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (newSize.size && newSize.stock >= 0) {
+                                const exists = productSizes.find(s => s.size === newSize.size);
+                                if (exists) {
+                                  setProductSizes(productSizes.map(s => 
+                                    s.size === newSize.size ? { ...s, stock: newSize.stock } : s
+                                  ));
+                                } else {
+                                  setProductSizes([...productSizes, { ...newSize }]);
+                                }
+                                setNewSize({ size: "", stock: 0 });
+                              }
+                            }}
+                            className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl hover:opacity-90 transition-all font-medium cursor-pointer"
+                          >
+                            Add
+                          </button>
+                        </div>
+
+                        {productSizes.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-zinc-900 dark:text-white">Sizes:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {productSizes.map((sizeItem, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center gap-2 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg"
+                                >
+                                  <span className="text-sm font-medium text-zinc-900 dark:text-white">
+                                    {sizeItem.size}: {sizeItem.stock}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setProductSizes(productSizes.filter((_, i) => i !== index));
+                                    }}
+                                    className="text-red-600 hover:text-red-700 cursor-pointer"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1030,9 +1321,22 @@ export default function ProductsPage() {
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <Video size={32} className="text-zinc-400" />
-                                    </div>
+                                    <video
+                                      src={item.preview}
+                                      className="w-full h-full object-cover"
+                                      controls={false}
+                                      muted
+                                      playsInline
+                                      onMouseEnter={(e) => {
+                                        const video = e.currentTarget;
+                                        video.play().catch(() => {});
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        const video = e.currentTarget;
+                                        video.pause();
+                                        video.currentTime = 0;
+                                      }}
+                                    />
                                   )}
                                   {item.isPrimary && (
                                     <div className="absolute top-2 left-2 bg-yellow-500 rounded-full p-1.5 shadow-lg">
@@ -1122,10 +1426,16 @@ export default function ProductsPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-black/10 disabled:opacity-50 cursor-pointer hover:opacity-90"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:opacity-90"
                 >
-                  {submitting && <LoadingSpinner size="small" />}
-                  {editingProduct ? "Update Product" : "Create Product"}
+                  {submitting ? (
+                    <>
+                      <LoadingSpinner size="small" />
+                      <span>{editingProduct ? "Updating..." : "Creating..."}</span>
+                    </>
+                  ) : (
+                    <span>{editingProduct ? "Update Product" : "Create Product"}</span>
+                  )}
                 </button>
               </div>
             </form>

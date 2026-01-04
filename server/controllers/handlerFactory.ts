@@ -37,9 +37,9 @@ export const updateOne = (model: any) =>
       return next(new AppError("Invalid ID format", 400));
     }
 
-    if (req.body.price) req.body.price = parseFloat(req.body.price);
-    if (req.body.stock) req.body.stock = parseInt(req.body.stock);
-    if (req.body.rating) req.body.rating = parseInt(req.body.rating);
+    if (req.body.price !== undefined && req.body.price !== null) req.body.price = parseFloat(req.body.price);
+    if (req.body.stock !== undefined && req.body.stock !== null) req.body.stock = parseInt(req.body.stock);
+    if (req.body.rating !== undefined && req.body.rating !== null) req.body.rating = parseInt(req.body.rating);
 
     const doc = await model.update({
       where: { id },
@@ -63,9 +63,9 @@ export const updateOne = (model: any) =>
 export const createOne = (model: any) =>
   catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
     // Convert numeric fields if they exist
-    if (req.body.price) req.body.price = parseFloat(req.body.price);
-    if (req.body.stock) req.body.stock = parseInt(req.body.stock);
-    if (req.body.rating) req.body.rating = parseInt(req.body.rating);
+    if (req.body.price !== undefined && req.body.price !== null) req.body.price = parseFloat(req.body.price);
+    if (req.body.stock !== undefined && req.body.stock !== null) req.body.stock = parseInt(req.body.stock);
+    if (req.body.rating !== undefined && req.body.rating !== null) req.body.rating = parseInt(req.body.rating);
 
     const doc = await model.create({
       data: req.body,

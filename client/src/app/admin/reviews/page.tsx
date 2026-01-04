@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../../../utils/api';
+import { apiFetch } from '@/lib/utils/api';
 import {
     Search,
     MessageSquare,
@@ -14,12 +14,10 @@ import {
     Image as ImageIcon,
     ExternalLink
 } from 'lucide-react';
-import { useToast } from '@/app/components/ToastContext';
-import { Modal } from '@/app/components/Modal';
-import { Pagination } from '@/app/components/Pagination';
-import MediaViewer from '@/app/components/MediaViewer';
-import LoadingSpinner from '@/app/components/ui/LoadingSpinner';
-import Skeleton from '@/app/components/ui/Skeleton';
+import { useToast } from '@/contexts';
+import { Modal, Pagination } from '@/components/ui';
+import { MediaViewer } from '@/components/modals';
+import { LoadingSpinner, Skeleton } from '@/components/ui';
 
 interface Review {
     id: number | string;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../../../utils/api';
+import { apiFetch } from '@/lib/utils/api';
 import {
     ShoppingCart,
     User as UserIcon,
@@ -14,12 +14,10 @@ import {
     Send,
     Trash2
 } from 'lucide-react';
-import { useToast } from '@/app/components/ToastContext';
-import { Pagination } from '@/app/components/Pagination';
-import { Modal } from '@/app/components/Modal';
-import Skeleton from '@/app/components/ui/Skeleton';
-import LoadingSpinner from '@/app/components/ui/LoadingSpinner';
-import { resolveImageUrl } from '../../../utils/imageUtils';
+import { useToast } from '@/contexts';
+import { Pagination, Modal } from '@/components/ui';
+import { Skeleton, LoadingSpinner } from '@/components/ui';
+import { resolveImageUrl } from '@/lib/utils/imageUtils';
 
 interface CartItem {
     id: number;
@@ -88,10 +86,19 @@ export default function AbandonedCartsPage() {
         return items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
     };
 
-    const handleEmailUser = (email: string, name: string) => {
-        const subject = encodeURIComponent('Complete your purchase at Shirt');
-        const body = encodeURIComponent(`Hi ${name},\n\nWe noticed you left some items in your cart. We'd love to help you complete your order!`);
-        window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+    const [sendingEmail, setSendingEmail] = useState<number | null>(null);
+
+    const handleEmailUser = async (userId: number) => {
+        setSendingEmail(userId);
+        try {
+            await apiFetch(`/admin/carts/${userId}/send-email`, { method: 'POST' });
+            showToast('Abandoned cart email sent successfully!', 'success');
+        } catch (error) {
+            console.error('Failed to send email:', error);
+            showToast('Failed to send email', 'error');
+        } finally {
+            setSendingEmail(null);
+        }
     };
 
     const handleDeleteClick = (userId: number, userName: string) => {
@@ -213,11 +220,12 @@ export default function AbandonedCartsPage() {
 
                         {selectedCart.user && (
                             <button
-                                onClick={() => handleEmailUser(selectedCart.user!.email, selectedCart.user!.name)}
-                                className="flex items-center gap-2 px-6 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-lg shadow-black/10"
+                                onClick={() => handleEmailUser(selectedCart.user!.id)}
+                                disabled={sendingEmail === selectedCart.user.id}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-lg shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Send size={14} />
-                                Email Customer
+                                {sendingEmail === selectedCart.user.id ? 'Sending...' : 'Email Customer'}
                             </button>
                         )}
                     </div>
@@ -378,11 +386,16 @@ export default function AbandonedCartsPage() {
                                                         </button>
                                                         {cart.user && (
                                                             <button
-                                                                onClick={() => handleEmailUser(cart.user!.email, cart.user!.name)}
-                                                                className="p-2 text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                                                                onClick={() => handleEmailUser(cart.user!.id)}
+                                                                disabled={sendingEmail === cart.user.id}
+                                                                className="p-2 text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                                                 title="Email Customer"
                                                             >
-                                                                <Send size={18} />
+                                                                {sendingEmail === cart.user.id ? (
+                                                                    <LoadingSpinner size="small" />
+                                                                ) : (
+                                                                    <Send size={18} />
+                                                                )}
                                                             </button>
                                                         )}
                                                         <button

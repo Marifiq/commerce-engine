@@ -35,4 +35,15 @@ router.patch(
 
 router.delete("/:id", productController.deleteProduct);
 
+// Archive management routes
+router.patch("/:id/archive", productController.archiveProduct);
+router.patch("/:id/unarchive", productController.unarchiveProduct);
+router.get("/archived", productController.getArchivedProducts);
+
+// Size management routes
+router.get("/:id/sizes", productController.getProductSizes);
+router.post("/:id/sizes", productController.addProductSize);
+router.delete("/:id/sizes", productController.deleteProductSize);
+router.patch("/:id/size-enabled", productController.toggleSizeEnabled);
+
 export default router;

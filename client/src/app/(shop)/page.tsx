@@ -1,17 +1,30 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Hero from "../components/Hero";
-import CategorySection from "../components/CategorySection";
-import NewArrivals from "../components/NewArrivals";
-import OffSection from "../components/OffSection";
-import BestSellers from "../components/BestSellers";
-import Reviews from "../components/Reviews";
+import { useEffect, useRef, lazy, Suspense } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Hero } from "@/components/layout";
+import { LoadingSpinner } from "@/components/ui";
+
+// Lazy load heavy components for better performance
+const CategorySection = lazy(() => 
+  import("@/components/shop").then(module => ({ default: module.CategorySection }))
+);
+const NewArrivals = lazy(() => 
+  import("@/components/shop").then(module => ({ default: module.NewArrivals }))
+);
+const OffSection = lazy(() => 
+  import("@/components/shop").then(module => ({ default: module.OffSection }))
+);
+const BestSellers = lazy(() => 
+  import("@/components/shop").then(module => ({ default: module.BestSellers }))
+);
+const Reviews = lazy(() => 
+  import("@/components/shop").then(module => ({ default: module.Reviews }))
+);
 
 // Register ScrollTrigger plugin
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
@@ -33,11 +46,12 @@ export default function Home() {
         setTimeout(() => {
           const headerHeight = 80; // Height of fixed header
           const elementPosition = element.getBoundingClientRect().top;
-          const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
-          
+          const offsetPosition =
+            elementPosition + window.pageYOffset - headerHeight;
+
           window.scrollTo({
             top: offsetPosition,
-            behavior: 'smooth'
+            behavior: "smooth",
           });
         }, 100);
       }
@@ -54,18 +68,18 @@ export default function Home() {
           categoryRef.current,
           {
             y: 60,
-            opacity: 0
+            opacity: 0,
           },
           {
             y: 0,
             opacity: 1,
             duration: 1.2,
-            ease: 'power3.out',
+            ease: "power3.out",
             scrollTrigger: {
               trigger: categoryRef.current,
-              start: 'top 85%',
-              toggleActions: 'play none none reverse'
-            }
+              start: "top 85%",
+              toggleActions: "play none none reverse",
+            },
           }
         );
       }
@@ -80,23 +94,40 @@ export default function Home() {
     };
   }, []);
 
+  // Loading fallback component
+  const SectionLoader = () => (
+    <div className="flex items-center justify-center py-20">
+      <LoadingSpinner size="medium" />
+    </div>
+  );
+
   return (
     <div className="w-full">
       <Hero />
       <div ref={categoryRef}>
-        <CategorySection />
+        <Suspense fallback={<SectionLoader />}>
+          <CategorySection />
+        </Suspense>
       </div>
       <div ref={newArrivalsRef}>
-        <NewArrivals />
+        <Suspense fallback={<SectionLoader />}>
+          <NewArrivals />
+        </Suspense>
       </div>
       <div ref={offSectionRef}>
-        <OffSection />
+        <Suspense fallback={<SectionLoader />}>
+          <OffSection />
+        </Suspense>
       </div>
       <div ref={bestSellersRef}>
-        <BestSellers />
+        <Suspense fallback={<SectionLoader />}>
+          <BestSellers />
+        </Suspense>
       </div>
       <div ref={reviewsRef}>
-        <Reviews />
+        <Suspense fallback={<SectionLoader />}>
+          <Reviews />
+        </Suspense>
       </div>
     </div>
   );

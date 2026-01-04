@@ -7,28 +7,42 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id                    Int      @id @default(autoincrement())
-  name                  String
-  email                 String   @unique
-  password              String
-  role                  String   @default("user")
-  passwordResetToken    String?
-  passwordResetExpires  DateTime?
-  changedPasswordAt     DateTime?
-  createdAt             DateTime @default(now())
-  cart                  Cart?
-  reviews               Review[]
-  orders                Order[]
+  id                       Int             @id @default(autoincrement())
+  name                     String
+  email                    String          @unique
+  password                 String?
+  googleId                 String?         @unique
+  role                     String          @default("user")
+  passwordResetToken       String?
+  passwordResetExpires     DateTime?
+  passwordResetCode        String?
+  passwordResetCodeExpires DateTime?
+  emailVerificationCode    String?
+  emailVerificationExpires DateTime?
+  isEmailVerified          Boolean         @default(false)
+  changedPasswordAt        DateTime?
+  profileImage             String?
+  gender                   String?
+  phoneNumber              String?
+  addressStreet            String?
+  addressCity              String?
+  addressState             String?
+  addressZip               String?
+  addressCountry           String?
+  createdAt                DateTime        @default(now())
+  cart                     Cart?
+  reviews                  Review[]
+  orders                   Order[]
+  paymentMethods           PaymentMethod[]
 }
 
 model Category {
-  id              Int       @id @default(autoincrement())
-  name            String    @unique
+  id              Int      @id @default(autoincrement())
+  name            String   @unique
   image           String?
-  discountPercent Float?    @default(0)
-  createdAt       DateTime  @default(now())
+  discountPercent Float?   @default(0)
+  createdAt       DateTime @default(now())
 }
 
 model Product {
@@ -40,13 +54,16 @@ model Product {
   image           String
   section         String?
   stock           Int            @default(0)
-  discountPercent Float?          @default(0)
+  discountPercent Float?         @default(0)
+  sizeEnabled     Boolean        @default(false)
+  isArchived      Boolean        @default(false)
   createdAt       DateTime       @default(now())
   cartItems       CartItem[]
   reviews         Review[]
   orderItems      OrderItem[]
   media           ProductMedia[]
   offerProducts   OfferProduct[]
+  sizes           ProductSize[]
 }
 
 model ProductMedia {
@@ -54,7 +71,7 @@ model ProductMedia {
   productId Int
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
-  type      String   // "image" or "video"
+  type      String // "image" or "video"
   isPrimary Boolean  @default(false)
   order     Int      @default(0)
   createdAt DateTime @default(now())
@@ -75,28 +92,39 @@ model CartItem {
   productId Int
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
+  size      String?
 }
 
 model Order {
-  id              Int         @id @default(autoincrement())
-  userId          Int
-  user            User        @relation(fields: [userId], references: [id])
-  items           OrderItem[]
-  totalAmount     Float
-  status          String      @default("pending")
-  shippingAddress String?
-  paymentMethod   String?
-  createdAt       DateTime    @default(now())
+  id                    Int         @id @default(autoincrement())
+  userId                Int?
+  user                  User?       @relation(fields: [userId], references: [id])
+  items                 OrderItem[]
+  refunds               Refund[]
+  returns               Return[]
+  totalAmount           Float
+  status                String      @default("pending")
+  shippingAddress       String?
+  paymentMethod         String?
+  phoneNumber           String?
+  customerEmail         String? // For guest orders
+  customerName          String? // For guest orders
+  estimatedDeliveryDays Int?
+  createdAt             DateTime    @default(now())
 }
 
 model OrderItem {
-  id        Int     @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   orderId   Int
-  order     Order   @relation(fields: [orderId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id])
   productId Int
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
   price     Float
   quantity  Int
+  size      String?
+  returned  Boolean  @default(false)
+  returnId  Int?
+  return    Return?  @relation(fields: [returnId], references: [id])
 }
 
 model Review {
@@ -118,9 +146,9 @@ model Offer {
   title           String
   description     String?
   discountPercent Float
-  targetType      String         // "product", "category", or "all"
-  targetId        Int?           // categoryId (null for all products or when using products relation)
-  targetName      String?        // category name for display
+  targetType      String // "product", "category", or "all"
+  targetId        Int? // categoryId (null for all products or when using products relation)
+  targetName      String? // category name for display
   startDate       DateTime?
   endDate         DateTime?
   isActive        Boolean        @default(true)
@@ -139,4 +167,145 @@ model OfferProduct {
   createdAt DateTime @default(now())
 
   @@unique([offerId, productId])
+}
+
+model ProductSize {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String
+  stock     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, size])
+}
+
+model PaymentMethod {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String // "visa", "jazzcash", "easypaisa"
+  provider    String // "stripe", "jazzcash", "easypaisa"
+  last4       String? // Last 4 digits for cards
+  brand       String? // Card brand (visa, mastercard, etc.)
+  stripeId    String? // Stripe payment method ID
+  phoneNumber String? // For JazzCash/EasyPaisa
+  accountName String? // Account holder name
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Settings {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NewsletterSubscriber {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Banner {
+  id          Int      @id @default(autoincrement())
+  title       String?
+  description String?
+  image       String?
+  link        String?
+  position    String // "top", "middle", "bottom", "sidebar"
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  config      Json? // JSON configuration for banner customization (styles, layout, colors, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SocialMedia {
+  id        Int      @id @default(autoincrement())
+  platform  String   @unique // "facebook", "twitter", "instagram", "linkedin", "youtube", etc.
+  url       String
+  icon      String? // Icon name or URL
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Refund {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id])
+  amount      Float
+  reason      String?
+  status      String   @default("pending") // "pending", "approved", "rejected", "processed"
+  adminNotes  String?
+  createdAt   DateTime @default(now())
+  processedAt DateTime?
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model Return {
+  id            Int         @id @default(autoincrement())
+  orderId       Int
+  order         Order       @relation(fields: [orderId], references: [id])
+  orderItems    OrderItem[]
+  reason        String?
+  status        String      @default("pending") // "pending", "approved", "rejected", "returned"
+  trackingNumber String?
+  adminNotes    String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model Policy {
+  id        Int      @id @default(autoincrement())
+  type      String   @unique // "refund", "return", "terms", "privacy", "shipping"
+  title     String
+  content   String   @db.Text
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model EmailTemplate {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // "orderConfirmation", "orderShipped", "abandonedCart", etc.
+  subject     String
+  htmlContent String   @db.Text
+  textContent String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+
+model Theme {
+  id        Int      @id @default(autoincrement())
+  name      String
+  colors    Json? // { primary: string, secondary: string, background: string, text: string, etc. }
+  fonts     Json? // { heading: string, body: string, etc. }
+  layout    Json? // { sidebarPosition: string, headerStyle: string, etc. }
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
 }

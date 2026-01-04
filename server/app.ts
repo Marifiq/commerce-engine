@@ -5,6 +5,7 @@ import hpp from "hpp";
 
 import rateLimit from "express-rate-limit";
 import cors from "cors";
+import passport from "./utils/passport.js";
 
 import userRouter from "./routes/userRouter.js";
 import productRouter from "./routes/productRouter.js";
@@ -14,6 +15,7 @@ import orderRouter from "./routes/orderRouter.js";
 import reviewRouter from "./routes/reviewRouter.js";
 import adminRouter from "./routes/adminRouter.js";
 import offerRouter from "./routes/offerRouter.js";
+import paymentRouter from "./routes/paymentRouter.js";
 import globalErrorHandler from "./controllers/errorController.js";
 import AppError from "./utils/appError.js";
 
@@ -61,6 +63,9 @@ app.use(
 // Serving static files
 app.use(express.static("public"));
 
+// Initialize Passport middleware
+app.use(passport.initialize());
+
 // Test middleware
 app.use((req, res, next) => {
   (req as any).requestTime = new Date().toISOString();
@@ -68,6 +73,36 @@ app.use((req, res, next) => {
 });
 
 // 3) ROUTES
+// Public settings route (for app name and logo)
+import * as settingsController from "./controllers/settingsController.js";
+app.get("/api/v1/settings/app-name", settingsController.getAppName);
+app.get("/api/v1/settings/app-logo", settingsController.getAppLogo);
+app.get("/api/v1/settings/app-icon", settingsController.getAppIcon);
+app.get(
+  "/api/v1/settings/allow-guest-checkout",
+  settingsController.getAllowGuestCheckout
+);
+app.get("/api/v1/settings/hero-text", settingsController.getHeroText);
+app.get(
+  "/api/v1/settings/hero-description",
+  settingsController.getHeroDescription
+);
+app.get("/api/v1/settings/heading-lines", settingsController.getHeadingLines);
+
+// Public newsletter subscription route (no auth required)
+app.post(
+  "/api/v1/newsletter/subscribe",
+  settingsController.addNewsletterSubscriber
+);
+
+// Public policy routes
+import * as policyController from "./controllers/policyController.js";
+app.get("/api/v1/policies/:type", policyController.getActivePolicy);
+
+// Public theme route
+import * as themeController from "./controllers/themeController.js";
+app.get("/api/v1/themes/active", themeController.getPublicActiveTheme);
+
 app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/products", productRouter);
@@ -76,6 +111,7 @@ app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/reviews", reviewRouter);
 app.use("/api/v1/offers", offerRouter);
+app.use("/api/v1/payments", paymentRouter);
 
 // Handle undefined routes
 app.all("*path", (req, res, next) => {

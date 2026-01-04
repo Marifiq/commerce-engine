@@ -4,7 +4,10 @@ import * as authController from "../controllers/authController.js";
 
 const router = express.Router();
 
-// All order routes are protected
+// Guest checkout (public route - no auth required)
+router.post("/guest-checkout", orderController.guestCheckout);
+
+// All other order routes are protected
 router.use(authController.protect);
 
 router.post("/checkout", orderController.checkout);

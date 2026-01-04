@@ -7,6 +7,7 @@ import AppError from "../utils/appError.js";
 import * as authController from "./authController.js";
 import fs from "fs/promises";
 import path from "path";
+import { uploadToSupabase, deleteFromSupabase } from "../utils/supabaseStorage.js";
 
 // 1. Multer Memory Storage Configuration
 const multerStorage = multer.memoryStorage();
@@ -33,22 +34,16 @@ export const resizeCategoryImage = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     if (!req.file) return next();
 
-    // Ensure directory exists
-    const dir = "public/img/categories";
-    await fs.mkdir(dir, { recursive: true });
-
-    // Create a unique filename
     const filename = `category-${Date.now()}.webp`;
 
-    // Process and save image
-    await sharp(req.file.buffer)
+    // Process with Sharp and upload to products bucket (handles both Supabase and local storage)
+    const processedBuffer = await sharp(req.file.buffer)
       .resize(400, 400)
       .toFormat("webp")
       .webp({ quality: 90 })
-      .toFile(`${dir}/${filename}`);
+      .toBuffer();
 
-    // Save filename to body so the route handler can pick it up
-    req.body.image = `/img/categories/${filename}`;
+    req.body.image = await uploadToSupabase(processedBuffer, filename, "images", "products");
 
     next();
   }
@@ -68,10 +63,6 @@ export const processBase64CategoryImage = catchAsync(
     // Check if image is a base64 data URL
     if (typeof req.body.image === "string" && req.body.image.startsWith("data:image")) {
       try {
-        // Ensure directory exists
-        const dir = "public/img/categories";
-        await fs.mkdir(dir, { recursive: true });
-
         // Extract base64 data and mime type
         const matches = req.body.image.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
         if (!matches) {
@@ -80,19 +71,16 @@ export const processBase64CategoryImage = catchAsync(
 
         const base64Data = matches[2];
         const buffer = Buffer.from(base64Data, "base64");
-
-        // Create a unique filename
         const filename = `category-${Date.now()}.webp`;
 
-        // Process and save image using sharp
-        await sharp(buffer)
+        // Process with Sharp and upload to products bucket (handles both Supabase and local storage)
+        const processedBuffer = await sharp(buffer)
           .resize(400, 400)
           .toFormat("webp")
           .webp({ quality: 90 })
-          .toFile(`${dir}/${filename}`);
+          .toBuffer();
 
-        // Replace base64 string with file path
-        req.body.image = `/img/categories/${filename}`;
+        req.body.image = await uploadToSupabase(processedBuffer, filename, "images", "products");
       } catch (error: any) {
         console.error("Error processing category image:", error);
         return next(new AppError("Error processing image: " + error.message, 400));
@@ -111,15 +99,21 @@ const deleteImageFile = async (imagePath: string | null) => {
   if (!imagePath) return;
   
   try {
-    // Only delete if it's a local file path (starts with /img/)
-    if (imagePath.startsWith("/img/")) {
-      const fullPath = path.join("public", imagePath);
-      await fs.unlink(fullPath).catch(() => {
-        // Ignore errors if file doesn't exist
-      });
+    if (imagePath.startsWith("http")) {
+      // Extract file path from Supabase URL
+      // URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
+      const urlMatch = imagePath.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
+      if (urlMatch) {
+        const filePath = urlMatch[1];
+        await deleteFromSupabase(filePath, "products");
+      }
+    } else if (imagePath.startsWith("/img/")) {
+      // Local file path - deleteFromSupabase handles this now
+      await deleteFromSupabase(imagePath, "products");
     }
   } catch (error) {
     // Ignore errors when deleting old images
+    console.error("Error deleting image:", error);
   }
 };
 

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Shipped</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #ffffff;
+            background-color: #000000;
+            padding: 0;
+            margin: 0;
+        }
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #000000;
+        }
+        .email-container {
+            background-color: #000000;
+            padding: 40px 30px;
+        }
+      .header {
+        text-align: center;
+        padding-bottom: 30px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 40px;
+        position: relative;
+      }
+      .icon-container {
+        margin-bottom: 25px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .icon-container img {
+        width: 48px;
+        height: 48px;
+        max-width: 48px;
+        max-height: 48px;
+        object-fit: contain;
+        border-radius: 8px;
+        display: block;
+      }
+        .header-text {
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            text-transform: uppercase;
+            margin: 0;
+        }
+        .shipped-badge {
+            display: inline-block;
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .greeting {
+            font-size: 18px;
+            color: #a1a1aa;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .order-info-card {
+            background-color: #18181b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #ffffff;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #a1a1aa;
+            font-size: 14px;
+        }
+        .info-value {
+            color: #ffffff;
+            font-weight: 500;
+            font-size: 14px;
+            text-align: right;
+        }
+        .tracking-section {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-left: 4px solid #10b981;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        .tracking-section h2 {
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .tracking-section p {
+            color: #a1a1aa;
+            font-size: 14px;
+            line-height: 1.8;
+            margin: 10px 0;
+        }
+        .tracking-number {
+            font-size: 28px;
+            font-weight: 900;
+            color: #10b981;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 3px;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            display: inline-block;
+        }
+        .tracking-section a {
+            color: #10b981;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+        .items-section {
+            margin: 30px 0;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #18181b;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .items-table thead {
+            background-color: #000000;
+        }
+        .items-table th {
+            color: #ffffff;
+            padding: 16px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .items-table td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+            font-size: 14px;
+        }
+        .items-table tr:last-child td {
+            border-bottom: none;
+        }
+        .items-table tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        .total-section {
+            background-color: #18181b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 25px 30px;
+            margin-top: 30px;
+            text-align: right;
+        }
+        .total-label {
+            font-size: 14px;
+            color: #a1a1aa;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .total-amount {
+            font-size: 32px;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+        .delivery-info {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-left: 4px solid #fbbf24;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+        .delivery-info p {
+            margin: 8px 0;
+            color: #ffffff;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        .delivery-info strong {
+            color: #ffffff;
+            font-weight: 700;
+        }
+        .delivery-info a {
+            color: #fbbf24;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+        .footer {
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            color: #71717a;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .footer a {
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .footer a:hover {
+            border-bottom-color: #ffffff;
+        }
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            margin: 30px 0;
+        }
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                padding: 30px 20px;
+            }
+            .header-text {
+                font-size: 24px;
+            }
+            .info-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+            .info-value {
+                text-align: left;
+            }
+            .items-table {
+                font-size: 12px;
+            }
+            .items-table th,
+            .items-table td {
+                padding: 12px 8px;
+            }
+            .total-amount {
+                font-size: 28px;
+            }
+            .tracking-number {
+                font-size: 20px;
+                letter-spacing: 2px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-container">
+            <div class="header">
+                {{#if appIcon}}
+                <div class="icon-container">
+                    <img src="{{appIcon}}" alt="{{appName}}" />
+                </div>
+                {{/if}}
+                <h1 class="header-text">Your Order Has Been Shipped! 🚀</h1>
+            </div>
+            
+            <div style="text-align: center;">
+                <span class="shipped-badge">Shipped</span>
+            </div>
+            
+            <div class="greeting">
+                <p>Dear <strong>{{customerName}}</strong>,</p>
+                <p style="margin-top: 15px;">Great news! Your order has been shipped and is on its way to you. We're excited to get your items to you as soon as possible!</p>
+            </div>
+            
+            <div class="order-info-card">
+                <h2 class="card-title">Order Details</h2>
+                <div class="info-row">
+                    <span class="info-label">Order ID</span>
+                    <span class="info-value">{{orderId}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Order Date</span>
+                    <span class="info-value">{{orderDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Shipped Date</span>
+                    <span class="info-value">{{shippedDate}}</span>
+                </div>
+                {{#if shippingAddress}}
+                <div class="info-row">
+                    <span class="info-label">Shipping Address</span>
+                    <span class="info-value">{{shippingAddress}}</span>
+                </div>
+                {{/if}}
+            </div>
+            
+            <div class="tracking-section">
+                <h2>Track Your Order</h2>
+                <p>To track your order status, please visit your profile or use the tracking information below:</p>
+                <div class="tracking-number">{{orderId}}</div>
+                <p style="margin-top: 15px; font-size: 14px;">You can also contact us at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a> for any inquiries.</p>
+            </div>
+            
+            <div class="items-section">
+                <h2 class="section-title">Order Items</h2>
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each items}}
+                        <tr>
+                            <td><strong>{{this.name}}</strong>{{#if this.size}}<br><span style="color: #a1a1aa; font-size: 12px;">Size: {{this.size}}</span>{{/if}}</td>
+                            <td>{{this.quantity}}</td>
+                            <td>${{this.price}}</td>
+                            <td><strong>${{this.total}}</strong></td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="total-section">
+                <div class="total-label">Total Amount</div>
+                <div class="total-amount">${{totalAmount}}</div>
+            </div>
+            
+            <div class="delivery-info">
+                <p><strong>📦 Delivery Information</strong></p>
+                {{#if estimatedDeliveryDate}}
+                <p><strong>Estimated Delivery:</strong> {{estimatedDeliveryText}} (by {{estimatedDeliveryDate}})</p>
+                {{/if}}
+                <p>Your order is now in transit. {{#if estimatedDeliveryDate}}You should receive it {{estimatedDeliveryText}}.{{else}}You should receive it within the estimated delivery timeframe.{{/if}}</p>
+                <p>If you have any questions about your delivery, please contact us at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a></p>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="footer">
+                <p>Thank you for shopping with <strong style="color: #ffffff;">{{appName}}</strong>!</p>
+                <p style="margin-top: 10px; color: #a1a1aa;">We hope you love your purchase!</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

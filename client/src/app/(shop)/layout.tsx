@@ -1,11 +1,19 @@
 'use client';
 
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import CartSidebar from "../components/CartSidebar";
-import CheckoutModal from "../components/CheckoutModal";
-import OfferBanner from "../components/OfferBanner";
+import { lazy, Suspense } from 'react';
+import { Header, Footer } from "@/components/layout";
+import { LoadingSpinner } from "@/components/ui";
 
+// Lazy load heavy components for better initial load performance
+const OfferBanner = lazy(() => 
+  import("@/components/shop").then(module => ({ default: module.OfferBanner }))
+);
+const CartSidebar = lazy(() => 
+  import("@/components/shop").then(module => ({ default: module.CartSidebar }))
+);
+const CheckoutModal = lazy(() => 
+  import("@/components/shop").then(module => ({ default: module.CheckoutModal }))
+);
 
 export default function ShopLayout({
     children,
@@ -14,13 +22,19 @@ export default function ShopLayout({
 }) {
     return (
         <>
-            <OfferBanner />
+            <Suspense fallback={null}>
+                <OfferBanner />
+            </Suspense>
             <Header />
             <main className="min-h-screen pt-20">
                 {children}
             </main>
-            <CartSidebar />
-            <CheckoutModal />
+            <Suspense fallback={null}>
+                <CartSidebar />
+            </Suspense>
+            <Suspense fallback={null}>
+                <CheckoutModal />
+            </Suspense>
             <Footer />
         </>
     );
