@@ -17,6 +17,7 @@
     "seed:best-sellers": "tsx scripts/seedBestSellers.ts",
     "seed:offers": "tsx scripts/seedOffers.ts",
     "seed:abandoned-carts": "tsx scripts/seedAbandonedCarts.ts",
+    "seed:policies": "tsx scripts/seedPolicies.ts",
     "migrate:supabase": "tsx scripts/migrateToSupabase.ts",
     "cleanup:media": "tsx scripts/cleanupLocalMedia.ts",
     "migrate:banner-config": "tsx scripts/applyBannerConfigMigration.ts"
@@ -43,6 +44,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "sharp": "^0.34.5",
+    "socket.io": "^4.8.3",
     "stripe": "^20.1.0",
     "xss-clean": "^0.1.4"
   },

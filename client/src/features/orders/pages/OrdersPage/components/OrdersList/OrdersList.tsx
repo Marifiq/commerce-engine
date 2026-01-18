@@ -12,6 +12,9 @@ interface OrdersListProps {
   onDeleteReview: (reviewId: number, productId: number) => void;
   onMediaClick: (media: string) => void;
   userReviews: any[];
+  showArchived: boolean;
+  onArchive?: (orderId: number) => void;
+  onUnarchive?: (orderId: number) => void;
 }
 
 export function OrdersList({
@@ -23,22 +26,44 @@ export function OrdersList({
   onDeleteReview,
   onMediaClick,
   userReviews,
+  showArchived,
+  onArchive,
+  onUnarchive,
 }: OrdersListProps) {
+  // Filter orders based on showArchived state
+  const filteredOrders = orders.filter((order) => {
+    if (!showArchived && order.isArchived) {
+      return false;
+    }
+    if (showArchived && !order.isArchived) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
-      {orders.map((order) => (
-        <OrderCard
-          key={order.id}
-          order={order}
-          reorderingOrderId={reorderingOrderId}
-          onReorder={onReorder}
-          onWriteReview={onWriteReview}
-          onEditReview={onEditReview}
-          onDeleteReview={onDeleteReview}
-          onMediaClick={onMediaClick}
-          userReviews={userReviews}
-        />
-      ))}
+      {filteredOrders.length > 0 ? (
+        filteredOrders.map((order) => (
+          <OrderCard
+            key={order.id}
+            order={order}
+            reorderingOrderId={reorderingOrderId}
+            onReorder={onReorder}
+            onWriteReview={onWriteReview}
+            onEditReview={onEditReview}
+            onDeleteReview={onDeleteReview}
+            onMediaClick={onMediaClick}
+            userReviews={userReviews}
+            onArchive={onArchive}
+            onUnarchive={onUnarchive}
+          />
+        ))
+      ) : (
+        <div className="text-center py-12 text-zinc-500">
+          {showArchived ? "No archived orders found." : "No active orders found."}
+        </div>
+      )}
     </div>
   );
 }

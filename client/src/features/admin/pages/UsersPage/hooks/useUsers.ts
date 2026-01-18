@@ -11,16 +11,22 @@ export interface UserData {
   name: string;
   email: string;
   role: 'admin' | 'user';
+  isArchived?: boolean;
 }
 
-export function useUsers() {
+export function useUsers(includeArchived: boolean = false) {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
 
   const fetchUsers = async () => {
     try {
-      const res = await apiFetch('/admin/users');
+      const params = new URLSearchParams();
+      if (includeArchived) {
+        params.append('includeArchived', 'true');
+      }
+      const url = `/admin/users${params.toString() ? `?${params.toString()}` : ''}`;
+      const res = await apiFetch(url);
       setUsers(res.data.users);
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -32,7 +38,8 @@ export function useUsers() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeArchived]);
 
   return {
     users,

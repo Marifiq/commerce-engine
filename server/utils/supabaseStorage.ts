@@ -52,6 +52,7 @@ const supabase = supabaseUrl && supabaseKey && supabaseKey.startsWith('eyJ') && 
 // Bucket names - can be overridden via environment variables
 const PRODUCTS_BUCKET = process.env.SUPABASE_PRODUCTS_BUCKET || process.env.SUPABASE_BUCKET_NAME || "products";
 const REVIEWS_BUCKET = process.env.SUPABASE_REVIEWS_BUCKET || "reviews";
+const MESSAGES_BUCKET = process.env.SUPABASE_MESSAGES_BUCKET || "messages";
 
 /**
  * Upload a file buffer to Supabase Storage or local storage
@@ -184,6 +185,84 @@ export const deleteFromSupabase = async (
     }
   } catch (error: any) {
     console.error(`Supabase delete error: ${error.message}`);
+  }
+};
+
+/**
+ * Upload message attachment (images, documents, videos)
+ * @param fileBuffer - The file buffer to upload
+ * @param fileName - The name of the file
+ * @param fileType - The type of file: "image", "document", "video"
+ * @returns The public URL of the uploaded file
+ */
+export const uploadMessageAttachment = async (
+  fileBuffer: Buffer,
+  fileName: string,
+  fileType: "image" | "document" | "video"
+): Promise<string> => {
+  const dbConfig = getDatabaseConfig();
+  const useLocalStorage = dbConfig.isLocal;
+
+  if (useLocalStorage) {
+    const localDir = "public/img/messages";
+    const urlPath = `/img/messages/${fileName}`;
+
+    try {
+      await fs.mkdir(localDir, { recursive: true });
+      await fs.writeFile(path.join(localDir, fileName), fileBuffer);
+      return urlPath;
+    } catch (error: any) {
+      throw new AppError(`Failed to save file to local storage: ${error.message}`, 500);
+    }
+  }
+
+  if (!supabase) {
+    throw new AppError("Supabase is not configured", 500);
+  }
+
+  const folder = fileType === "image" ? "images" : fileType === "video" ? "videos" : "documents";
+  const filePath = `${folder}/${fileName}`;
+  
+  // Determine content type
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  const contentTypeMap: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    mp4: "video/mp4",
+  };
+  const contentType = contentTypeMap[ext || ""] || "application/octet-stream";
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(MESSAGES_BUCKET)
+      .upload(filePath, fileBuffer, {
+        contentType,
+        upsert: true,
+      });
+
+    if (error) {
+      throw new AppError(`Failed to upload file to Supabase: ${error.message}`, 500);
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(MESSAGES_BUCKET)
+      .getPublicUrl(filePath);
+
+    if (!urlData?.publicUrl) {
+      throw new AppError("Failed to get public URL from Supabase", 500);
+    }
+
+    return urlData.publicUrl;
+  } catch (error: any) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    throw new AppError(`Supabase upload error: ${error.message}`, 500);
   }
 };
 

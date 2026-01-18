@@ -8,6 +8,7 @@ import * as returnController from "../controllers/returnController.js";
 import * as policyController from "../controllers/policyController.js";
 import * as emailTemplateController from "../controllers/emailTemplateController.js";
 import * as themeController from "../controllers/themeController.js";
+import * as messageController from "../controllers/messageController.js";
 
 const router = express.Router();
 
@@ -29,6 +30,8 @@ router.get("/users", adminController.getAllUsers);
 router.get("/users/:id/details", adminController.getUserDetails);
 router.patch("/users/:id", adminController.updateUser);
 router.delete("/users/:id", adminController.deleteUser);
+router.patch("/users/:id/archive", adminController.archiveUser);
+router.patch("/users/:id/unarchive", adminController.unarchiveUser);
 
 // User cart management
 router.post("/users/:id/cart/items", adminController.addCartItem);
@@ -118,5 +121,21 @@ router.post("/themes", themeController.createTheme);
 router.put("/themes/:id", themeController.updateTheme);
 router.patch("/themes/:id/activate", themeController.activateTheme);
 router.delete("/themes/:id", themeController.deleteTheme);
+
+// Message management
+router.get("/messages/conversations", messageController.getAllConversations);
+router.get("/messages/conversations/:id", messageController.getConversation);
+router.post("/messages/conversations", messageController.createConversation);
+router.get("/messages/conversations/:id/messages", messageController.getConversationMessages);
+router.post(
+  "/messages/conversations/:id/messages",
+  messageController.uploadMessageAttachments,
+  messageController.processMessageAttachments,
+  messageController.sendMessage
+);
+router.post("/messages/conversations/:id/messages/read", messageController.markMessagesAsRead);
+router.patch("/messages/conversations/:id/status", messageController.updateConversationStatus);
+router.post("/messages/conversations/:id/participants", messageController.addParticipant);
+router.get("/messages/unread-count", messageController.getUnreadCount);
 
 export default router;

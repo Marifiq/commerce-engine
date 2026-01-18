@@ -11,6 +11,9 @@ interface UserRowProps {
   onEdit: () => void;
   onDelete: () => void;
   onRoleChange: () => void;
+  onMessage?: () => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
 }
 
 export function UserRow({
@@ -20,6 +23,9 @@ export function UserRow({
   onEdit,
   onDelete,
   onRoleChange,
+  onMessage,
+  onArchive,
+  onUnarchive,
 }: UserRowProps) {
   return (
     <tr
@@ -31,7 +37,14 @@ export function UserRow({
           <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-400">
             {user.name.charAt(0)}
           </div>
-          <div className="font-bold text-zinc-900 dark:text-white">{user.name}</div>
+          <div className="flex items-center gap-2">
+            <div className="font-bold text-zinc-900 dark:text-white">{user.name}</div>
+            {user.isArchived && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400">
+                Archived
+              </span>
+            )}
+          </div>
         </div>
       </td>
       <td className="px-6 py-4 hidden sm:table-cell">
@@ -59,6 +72,9 @@ export function UserRow({
           onEdit={onEdit}
           onDelete={onDelete}
           onRoleChange={onRoleChange}
+          onMessage={onMessage}
+          onArchive={onArchive}
+          onUnarchive={onUnarchive}
         />
       </td>
     </tr>

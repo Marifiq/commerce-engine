@@ -1,6 +1,6 @@
 'use client';
 
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Archive, ArchiveRestore } from 'lucide-react';
 import { Order } from '@/types/order';
 import { OrderStatusBadge } from './OrderStatusBadge';
 import { OrderItems } from '../OrderDetails/OrderItems';
@@ -14,6 +14,8 @@ interface OrderCardProps {
   onDeleteReview: (reviewId: number, productId: number) => void;
   onMediaClick: (media: string) => void;
   userReviews: any[];
+  onArchive?: (orderId: number) => void;
+  onUnarchive?: (orderId: number) => void;
 }
 
 export function OrderCard({
@@ -25,6 +27,8 @@ export function OrderCard({
   onDeleteReview,
   onMediaClick,
   userReviews,
+  onArchive,
+  onUnarchive,
 }: OrderCardProps) {
   const getProductReview = (productId: number) => {
     return userReviews.find((r) => r.productId === productId);
@@ -35,11 +39,16 @@ export function OrderCard({
       <div className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="space-y-1">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
                 Order #{order.id}
               </h3>
               <OrderStatusBadge status={order.status || 'pending'} />
+              {order.isArchived && (
+                <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400">
+                  Archived
+                </span>
+              )}
             </div>
             <p className="text-sm text-zinc-500">
               Placed on{' '}
@@ -57,25 +66,50 @@ export function OrderCard({
                 ${((order.totalAmount ?? order.total) || 0).toFixed(2)}
               </p>
             </div>
-            {(order.status || 'pending') === 'delivered' && (
-              <button
-                onClick={() => onReorder(order)}
-                disabled={reorderingOrderId === order.id}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-semibold hover:bg-black transition-all shadow-sm hover:shadow-md active:scale-95 dark:bg-white dark:text-black dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                {reorderingOrderId === order.id ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white dark:border-black border-t-transparent rounded-full animate-spin"></div>
-                    <span>Adding...</span>
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="h-4 w-4" />
-                    <span>Re-order</span>
-                  </>
-                )}
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {order.isArchived ? (
+                onUnarchive && (
+                  <button
+                    onClick={() => onUnarchive(order.id)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-all shadow-sm hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    title="Unarchive Order"
+                  >
+                    <ArchiveRestore className="h-4 w-4" />
+                    <span>Unarchive</span>
+                  </button>
+                )
+              ) : (
+                onArchive && (
+                  <button
+                    onClick={() => onArchive(order.id)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-600 text-white text-sm font-semibold hover:bg-zinc-700 transition-all shadow-sm hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    title="Archive Order"
+                  >
+                    <Archive className="h-4 w-4" />
+                    <span>Archive</span>
+                  </button>
+                )
+              )}
+              {(order.status || 'pending') === 'delivered' && !order.isArchived && (
+                <button
+                  onClick={() => onReorder(order)}
+                  disabled={reorderingOrderId === order.id}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 text-white text-sm font-semibold hover:bg-black transition-all shadow-sm hover:shadow-md active:scale-95 dark:bg-white dark:text-black dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {reorderingOrderId === order.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white dark:border-black border-t-transparent rounded-full animate-spin"></div>
+                      <span>Adding...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-4 w-4" />
+                      <span>Re-order</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

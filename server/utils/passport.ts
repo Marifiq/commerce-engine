@@ -1,6 +1,7 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import prisma from "../db.js";
+import Email from "./email.js";
 
 passport.use(
   new GoogleStrategy(
@@ -97,6 +98,16 @@ passport.use(
         } catch (newsletterError) {
           // Don't fail OAuth if newsletter subscription fails
           console.error('Failed to subscribe user to newsletter:', newsletterError);
+        }
+
+        // Send welcome email to new Google OAuth user
+        try {
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+          const url = `${frontendUrl}/me`;
+          await new Email(user, url).sendWelcome();
+        } catch (emailError) {
+          // Don't fail OAuth if welcome email fails
+          console.error('Failed to send welcome email to new Google OAuth user:', emailError);
         }
 
         return done(null, user);

@@ -51,6 +51,7 @@ export const siteConfig = {
       { label: 'Off', href: '#off', type: 'anchor' },
       { label: 'New Arrivals', href: '#new-arrivals', type: 'anchor' },
       { label: 'Best Sellers', href: '#best-sellers', type: 'anchor' },
+      { label: 'Policies', href: '/policies', type: 'link' },
     ],
     buttons: {
       adminPanel: 'Admin Panel',
@@ -97,11 +98,11 @@ export const siteConfig = {
     support: {
       title: 'Support',
       items: [
-        { label: 'Contact Us', href: '#' },
-        { label: 'Shipping Policy', href: '#' },
-        { label: 'Returns & Exchanges', href: '#' },
-        { label: 'Size Guide', href: '#' },
-        { label: 'FAQs', href: '#' },
+        { label: 'Contact Us', href: '/policies/contact' },
+        { label: 'Shipping Policy', href: '/policies/shipping' },
+        { label: 'Returns & Exchanges', href: '/policies/returns-exchanges' },
+        { label: 'Size Guide', href: '/policies/size-guide' },
+        { label: 'FAQs', href: '/policies/faqs' },
       ],
     },
     newsletter: {
@@ -115,9 +116,11 @@ export const siteConfig = {
       madeWith: 'Made with',
       madeWithText: 'for style',
       policies: [
-        { label: 'Privacy Policy', href: '#' },
-        { label: 'Terms of Service', href: '#' },
-        { label: 'Cookie Policy', href: '#' },
+        { label: 'Privacy Policy', href: '/policies/privacy' },
+        { label: 'Terms of Service', href: '/policies/terms' },
+        { label: 'Refund Policy', href: '/policies/refund' },
+        { label: 'Return Policy', href: '/policies/return' },
+        { label: 'Shipping Policy', href: '/policies/shipping' },
       ],
     },
   },

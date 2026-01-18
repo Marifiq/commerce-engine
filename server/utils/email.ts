@@ -212,8 +212,32 @@ export default class Email {
   }
 
   async sendWelcome() {
-    const appName = await getAppName();
-    await this.send(`Welcome to the ${appName} family!`, `Welcome to ${appName}!`);
+    try {
+      const appName = await getAppName();
+      const appIcon = await getAppIcon();
+      const templatePath = join(process.cwd(), 'templates', 'emails', 'welcome.html');
+      let template = readFileSync(templatePath, 'utf-8');
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const templateData = {
+        firstName: this.firstName,
+        appName: appName,
+        appIcon: appIcon || '',
+        appUrl: frontendUrl,
+        supportEmail: process.env.EMAIL_FROM || process.env.EMAIL_USERNAME || 'support@shirtstore.com',
+      };
+
+      const html = this.replaceTemplate(template, templateData);
+      const text = `Hello ${this.firstName},\n\nWelcome to ${appName}!\n\nWe're thrilled to have you join our community! Your account has been successfully created and you're now part of our growing family of satisfied customers.\n\nStart exploring our products, enjoy seamless shopping, and get fast delivery on all your orders. Our dedicated support team is always here to help you with any questions or concerns.\n\nVisit us at: ${frontendUrl}\n\nThank you for choosing ${appName}!\n\nHappy Shopping!\n\nBest regards,\n${appName} Team`;
+
+      await this.send(text, `Welcome to ${appName}! 🎉`, html);
+    } catch (error) {
+      console.error('Error sending welcome email:', error);
+      // Fallback to plain text if template fails
+      const appName = await getAppName();
+      const message = `Hello ${this.firstName},\n\nWelcome to ${appName}!\n\nWe're thrilled to have you join our community! Your account has been successfully created.\n\nThank you for choosing ${appName}!\n\nBest regards,\n${appName} Team`;
+      await this.send(message, `Welcome to ${appName}!`);
+    }
   }
 
   async sendPasswordReset() {

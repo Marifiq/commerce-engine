@@ -26,6 +26,7 @@ router.get(
 router.use(authController.protect);
 
 router.get("/me", userController.getMe, userController.getUser);
+router.get("/list", userController.getOtherUsers);
 router.patch(
   "/update-me",
   userController.uploadProfileImage,

@@ -12,11 +12,15 @@ interface UsersListProps {
   currentPage: number;
   itemsPerPage: number;
   updatingId: string | number | null;
+  showArchived: boolean;
   onViewProfile: (userId: string | number) => void;
   onEdit: (user: UserData) => void;
   onDelete: (userId: string | number) => void;
   onRoleChange: (userId: string | number, currentRole: string) => void;
   onPageChange: (page: number) => void;
+  onMessage?: (userId: string | number) => void;
+  onArchive?: (userId: number) => void;
+  onUnarchive?: (userId: number) => void;
 }
 
 export function UsersList({
@@ -27,19 +31,32 @@ export function UsersList({
   currentPage,
   itemsPerPage,
   updatingId,
+  showArchived,
   onViewProfile,
   onEdit,
   onDelete,
   onRoleChange,
   onPageChange,
+  onMessage,
+  onArchive,
+  onUnarchive,
 }: UsersListProps) {
   const filteredUsers = users
-    .filter(
-      (u) =>
+    .filter((u) => {
+      // Archive filter - show all if showArchived is true, otherwise filter out archived
+      if (!showArchived && u.isArchived) {
+        return false;
+      }
+      if (showArchived && !u.isArchived) {
+        return false;
+      }
+      // Search filter
+      return (
         u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.role.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+      );
+    })
     .sort((a, b) => {
       switch (sortBy) {
         case 'newest':
@@ -120,6 +137,9 @@ export function UsersList({
                     onEdit={() => onEdit(user)}
                     onDelete={() => onDelete(user.id)}
                     onRoleChange={() => onRoleChange(user.id, user.role)}
+                    onMessage={onMessage ? () => onMessage(user.id) : undefined}
+                    onArchive={onArchive ? () => onArchive(Number(user.id)) : undefined}
+                    onUnarchive={onUnarchive ? () => onUnarchive(Number(user.id)) : undefined}
                   />
                 ))
               ) : (

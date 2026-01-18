@@ -210,7 +210,7 @@ export default function Footer() {
                                 <li key={item.label}>
                                     <Link 
                                         href={item.href} 
-                                        className="group flex items-center gap-2 text-base text-zinc-400 hover:text-white transition-all duration-300"
+                                        className="group flex items-center gap-2 text-base text-zinc-400 hover:text-white transition-all duration-300 cursor-pointer"
                                     >
                                         <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                                         <span className="group-hover:translate-x-1 transition-transform">{item.label}</span>
@@ -231,7 +231,7 @@ export default function Footer() {
                                 <li key={item.label}>
                                     <Link 
                                         href={item.href} 
-                                        className="group flex items-center gap-2 text-base text-zinc-400 hover:text-white transition-all duration-300"
+                                        className="group flex items-center gap-2 text-base text-zinc-400 hover:text-white transition-all duration-300 cursor-pointer"
                                     >
                                         <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                                         <span className="group-hover:translate-x-1 transition-transform">{item.label}</span>
@@ -288,7 +288,7 @@ export default function Footer() {
                         </p>
                         <div className="flex items-center gap-6 text-sm">
                             {siteConfig.footer.bottomBar.policies.map((policy) => (
-                                <Link key={policy.label} href={policy.href} className="text-zinc-500 hover:text-white transition-colors">
+                                <Link key={policy.label} href={policy.href} className="text-zinc-500 hover:text-white transition-colors cursor-pointer">
                                     {policy.label}
                                 </Link>
                             ))}

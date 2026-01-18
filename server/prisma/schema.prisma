@@ -8,19 +8,19 @@ datasource db {
 }
 
 model User {
-  id                       Int             @id @default(autoincrement())
+  id                       Int                       @id @default(autoincrement())
   name                     String
-  email                    String          @unique
+  email                    String                    @unique
   password                 String?
-  googleId                 String?         @unique
-  role                     String          @default("user")
+  googleId                 String?                   @unique
+  role                     String                    @default("user")
   passwordResetToken       String?
   passwordResetExpires     DateTime?
   passwordResetCode        String?
   passwordResetCodeExpires DateTime?
   emailVerificationCode    String?
   emailVerificationExpires DateTime?
-  isEmailVerified          Boolean         @default(false)
+  isEmailVerified          Boolean                   @default(false)
   changedPasswordAt        DateTime?
   profileImage             String?
   gender                   String?
@@ -30,11 +30,14 @@ model User {
   addressState             String?
   addressZip               String?
   addressCountry           String?
-  createdAt                DateTime        @default(now())
+  isArchived               Boolean                   @default(false)
+  createdAt                DateTime                  @default(now())
   cart                     Cart?
   reviews                  Review[]
   orders                   Order[]
   paymentMethods           PaymentMethod[]
+  sentMessages             Message[]                 @relation("SentMessages")
+  conversations            ConversationParticipant[]
 }
 
 model Category {
@@ -110,21 +113,22 @@ model Order {
   customerEmail         String? // For guest orders
   customerName          String? // For guest orders
   estimatedDeliveryDays Int?
+  isArchived             Boolean    @default(false)
   createdAt             DateTime    @default(now())
 }
 
 model OrderItem {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   orderId   Int
-  order     Order    @relation(fields: [orderId], references: [id])
+  order     Order   @relation(fields: [orderId], references: [id])
   productId Int
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
   price     Float
   quantity  Int
   size      String?
-  returned  Boolean  @default(false)
+  returned  Boolean @default(false)
   returnId  Int?
-  return    Return?  @relation(fields: [returnId], references: [id])
+  return    Return? @relation(fields: [returnId], references: [id])
 }
 
 model Review {
@@ -242,14 +246,14 @@ model SocialMedia {
 }
 
 model Refund {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   orderId     Int
-  order       Order    @relation(fields: [orderId], references: [id])
+  order       Order     @relation(fields: [orderId], references: [id])
   amount      Float
   reason      String?
-  status      String   @default("pending") // "pending", "approved", "rejected", "processed"
+  status      String    @default("pending") // "pending", "approved", "rejected", "processed"
   adminNotes  String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   processedAt DateTime?
 
   @@index([orderId])
@@ -257,16 +261,16 @@ model Refund {
 }
 
 model Return {
-  id            Int         @id @default(autoincrement())
-  orderId       Int
-  order         Order       @relation(fields: [orderId], references: [id])
-  orderItems    OrderItem[]
-  reason        String?
-  status        String      @default("pending") // "pending", "approved", "rejected", "returned"
+  id             Int         @id @default(autoincrement())
+  orderId        Int
+  order          Order       @relation(fields: [orderId], references: [id])
+  orderItems     OrderItem[]
+  reason         String?
+  status         String      @default("pending") // "pending", "approved", "rejected", "returned"
   trackingNumber String?
-  adminNotes    String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  adminNotes     String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@index([orderId])
   @@index([status])
@@ -308,4 +312,60 @@ model Theme {
   updatedAt DateTime @updatedAt
 
   @@index([isActive])
+}
+
+model Conversation {
+  id            Int                       @id @default(autoincrement())
+  type          String // "support" (admin-customer) or "internal" (admin-admin)
+  participants  ConversationParticipant[]
+  messages      Message[]
+  title         String? // Optional title for support conversations
+  status        String                    @default("open") // "open", "closed", "archived"
+  lastMessageAt DateTime?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  @@index([type, status])
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String // "admin" or "customer"
+  isRead         Boolean      @default(false)
+  lastReadAt     DateTime?
+  joinedAt       DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId, isRead])
+}
+
+model Message {
+  id             Int                 @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       Int
+  sender         User                @relation("SentMessages", fields: [senderId], references: [id])
+  content        String              @db.Text
+  attachments    MessageAttachment[]
+  isRead         Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model MessageAttachment {
+  id        Int      @id @default(autoincrement())
+  messageId Int
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  filename  String
+  url       String
+  type      String // "image", "document", "video"
+  size      Int? // Size in bytes
+  createdAt DateTime @default(now())
 }

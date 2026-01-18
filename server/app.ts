@@ -97,6 +97,7 @@ app.post(
 
 // Public policy routes
 import * as policyController from "./controllers/policyController.js";
+app.get("/api/v1/policies", policyController.getAllActivePolicies);
 app.get("/api/v1/policies/:type", policyController.getActivePolicy);
 
 // Public theme route
@@ -112,6 +113,8 @@ app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/reviews", reviewRouter);
 app.use("/api/v1/offers", offerRouter);
 app.use("/api/v1/payments", paymentRouter);
+import messageRouter from "./routes/messageRouter.js";
+app.use("/api/v1/messages", messageRouter);
 
 // Handle undefined routes
 app.all("*path", (req, res, next) => {

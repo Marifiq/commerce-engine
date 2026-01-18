@@ -635,9 +635,14 @@ export const updateOrder = catchAsync(async (req: UserRequest, res: Response, ne
 
 // Get all users (admin)
 export const getAllUsers = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
-  const { search } = req.query;
+  const { search, includeArchived } = req.query;
   
   const where: any = {};
+  
+  // Filter archived users unless includeArchived is true
+  if (includeArchived !== 'true') {
+    where.isArchived = false;
+  }
   
   // Add search functionality
   if (search && typeof search === 'string') {
@@ -674,6 +679,7 @@ export const getAllUsers = catchAsync(async (req: UserRequest, res: Response, ne
       name: true,
       email: true,
       role: true,
+      isArchived: true,
       createdAt: true,
     },
     orderBy: {
@@ -1293,3 +1299,77 @@ export const setCategoryDiscount = catchAsync(async (req: UserRequest, res: Resp
     data: { category: updatedCategory },
   });
 });
+
+// Archive user
+export const archiveUser = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const userId = parseInt(req.params.id);
+
+    if (isNaN(userId)) {
+      return next(new AppError("Invalid user ID", 400));
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { isArchived: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isArchived: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: { user: updatedUser },
+    });
+  }
+);
+
+// Unarchive user
+export const unarchiveUser = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const userId = parseInt(req.params.id);
+
+    if (isNaN(userId)) {
+      return next(new AppError("Invalid user ID", 400));
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { isArchived: false },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isArchived: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: { user: updatedUser },
+    });
+  }
+);

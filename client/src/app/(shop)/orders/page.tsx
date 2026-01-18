@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
+import { orderService } from "@/services/order.service";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { reviewService } from "@/services/review.service";
@@ -46,7 +47,8 @@ export default function MyOrdersPage() {
     type: "image",
   });
 
-  const { orders, loading } = useOrders();
+  const [showArchived, setShowArchived] = useState(false);
+  const { orders, loading, refetch } = useOrders(showArchived);
   const {
     reorderingOrderId,
     reorderResult,
@@ -233,9 +235,23 @@ export default function MyOrdersPage() {
 
       <div className="min-h-screen bg-black pb-24">
         <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white mb-8">
-            My Orders
-          </h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+              My Orders
+            </h1>
+            <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+              <input
+                type="checkbox"
+                id="showArchivedOrders"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-black dark:text-white focus:ring-0 cursor-pointer"
+              />
+              <label htmlFor="showArchivedOrders" className="text-sm font-medium text-zinc-900 dark:text-white cursor-pointer whitespace-nowrap">
+                Show Archived
+              </label>
+            </div>
+          </div>
 
           <OrdersList
             orders={orders}
@@ -246,6 +262,27 @@ export default function MyOrdersPage() {
             onDeleteReview={handleDeleteReview}
             onMediaClick={handleMediaClick}
             userReviews={userReviews}
+            showArchived={showArchived}
+            onArchive={async (orderId: number) => {
+              try {
+                await orderService.archiveOrder(orderId);
+                showToast("Order archived successfully", "success");
+                await refetch();
+              } catch (error) {
+                console.error("Failed to archive order:", error);
+                showToast("Failed to archive order", "error");
+              }
+            }}
+            onUnarchive={async (orderId: number) => {
+              try {
+                await orderService.unarchiveOrder(orderId);
+                showToast("Order unarchived successfully", "success");
+                await refetch();
+              } catch (error) {
+                console.error("Failed to unarchive order:", error);
+                showToast("Failed to unarchive order", "error");
+              }
+            }}
           />
         </div>
 

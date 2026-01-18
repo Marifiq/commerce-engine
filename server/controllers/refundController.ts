@@ -8,6 +8,7 @@ import Email from "../utils/email.js";
 // Create refund request
 export const createRefund = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
   const { orderId, amount, reason } = req.body;
+  const isAdmin = req.user?.role?.toLowerCase() === "admin";
 
   if (!orderId || !amount) {
     return next(new AppError("Order ID and amount are required", 400));
@@ -34,6 +35,11 @@ export const createRefund = catchAsync(async (req: UserRequest, res: Response, n
 
   if (!order) {
     return next(new AppError("Order not found", 404));
+  }
+
+  // If not admin, ensure the order belongs to the user
+  if (!isAdmin && req.user?.id && order.userId !== req.user.id) {
+    return next(new AppError("You can only request refunds for your own orders", 403));
   }
 
   // Calculate total refunded amount
@@ -76,8 +82,16 @@ export const createRefund = catchAsync(async (req: UserRequest, res: Response, n
 // Get all refunds
 export const getAllRefunds = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
   const { status, orderId, startDate, endDate } = req.query;
+  const isAdmin = req.user?.role?.toLowerCase() === "admin";
 
   const where: any = {};
+
+  // If not admin, only show refunds for user's orders
+  if (!isAdmin && req.user?.id) {
+    where.order = {
+      userId: req.user.id,
+    };
+  }
 
   if (status && typeof status === "string") {
     where.status = status;
@@ -85,6 +99,16 @@ export const getAllRefunds = catchAsync(async (req: UserRequest, res: Response, 
 
   if (orderId && typeof orderId === "string") {
     where.orderId = parseInt(orderId);
+    // If not admin, ensure the order belongs to the user
+    if (!isAdmin && req.user?.id) {
+      const order = await prisma.order.findUnique({
+        where: { id: parseInt(orderId) },
+        select: { userId: true },
+      });
+      if (!order || order.userId !== req.user.id) {
+        return next(new AppError("Order not found", 404));
+      }
+    }
   }
 
   if (startDate || endDate) {
@@ -138,6 +162,7 @@ export const getAllRefunds = catchAsync(async (req: UserRequest, res: Response, 
 // Get single refund
 export const getRefund = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
   const refundId = parseInt(req.params.id);
+  const isAdmin = req.user?.role?.toLowerCase() === "admin";
 
   if (isNaN(refundId)) {
     return next(new AppError("Invalid refund ID", 400));
@@ -167,6 +192,11 @@ export const getRefund = catchAsync(async (req: UserRequest, res: Response, next
 
   if (!refund) {
     return next(new AppError("Refund not found", 404));
+  }
+
+  // If not admin, ensure the refund belongs to the user
+  if (!isAdmin && req.user?.id && refund.order.userId !== req.user.id) {
+    return next(new AppError("You can only view your own refunds", 403));
   }
 
   res.status(200).json({

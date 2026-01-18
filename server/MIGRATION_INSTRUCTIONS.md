@@ -126,3 +126,6 @@ You should see:
 - The `image` column can now be NULL for banners using gradients/solid colors
 - Make sure to backup your database before running migrations in production
 
+
+
+

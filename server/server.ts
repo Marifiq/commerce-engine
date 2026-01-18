@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import app from "./app.js";
+import { initializeSocket } from "./utils/socket.js";
 
 process.on("uncaughtException", (err: Error) => {
   console.error(`${err.name} and ${err.message}`);
@@ -15,6 +16,9 @@ const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, () => {
   console.log(`App Running on port ${PORT}`);
 });
+
+// Initialize Socket.IO
+initializeSocket(server);
 
 process.on("unhandledRejection", (err: any) => {
   console.error(err.name + " " + err.message);

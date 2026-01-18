@@ -24,3 +24,6 @@ ALTER TABLE "ProductSize" ADD CONSTRAINT "ProductSize_productId_fkey" FOREIGN KE
 
 
 
+
+
+

@@ -35,6 +35,22 @@ export const getPolicyByType = catchAsync(async (req: UserRequest, res: Response
   });
 });
 
+// Get all active policies (public)
+export const getAllActivePolicies = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const policies = await prisma.policy.findMany({
+    where: {
+      isActive: true,
+    },
+    orderBy: { type: "asc" },
+  });
+
+  res.status(200).json({
+    status: "success",
+    results: policies.length,
+    data: { policies },
+  });
+});
+
 // Get active policy by type (public)
 export const getActivePolicy = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { type } = req.params;
@@ -64,7 +80,7 @@ export const createPolicy = catchAsync(async (req: UserRequest, res: Response, n
     return next(new AppError("Type, title, and content are required", 400));
   }
 
-  const validTypes = ["refund", "return", "terms", "privacy", "shipping"];
+  const validTypes = ["refund", "return", "terms", "privacy", "shipping", "faqs", "contact", "support", "guides", "size-guide"];
   if (!validTypes.includes(type)) {
     return next(new AppError(`Invalid policy type. Must be one of: ${validTypes.join(", ")}`, 400));
   }

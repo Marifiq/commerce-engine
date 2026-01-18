@@ -5,3 +5,6 @@ ADD COLUMN "isEmailVerified" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN "passwordResetCode" TEXT,
 ADD COLUMN "passwordResetCodeExpires" TIMESTAMP(3);
 
+
+
+

@@ -23,6 +23,7 @@ export interface Order {
   total?: number; // Legacy field, prefer totalAmount
   totalAmount?: number; // Matches backend schema
   status: string;
+  isArchived?: boolean;
   createdAt: string;
   refunds?: any[];
   returns?: any[];

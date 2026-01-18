@@ -14,6 +14,7 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<string>('newest');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showArchived, setShowArchived] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | number | null>(null);
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
@@ -45,7 +46,7 @@ export default function UsersPage() {
 
   const { showToast } = useToast();
   const router = useRouter();
-  const { users, loading, refetch } = useUsers();
+  const { users, loading, refetch } = useUsers(showArchived);
   const ITEMS_PER_PAGE = 10;
 
   const searchParams = useSearchParams();
@@ -68,7 +69,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortBy]);
+  }, [searchTerm, sortBy, showArchived]);
 
   const handleOpenConfirm = (userId: string | number, currentRole: string) => {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
@@ -226,6 +227,51 @@ export default function UsersPage() {
     }
   };
 
+  const handleMessageUser = async (userId: string | number) => {
+    try {
+      // Check if conversation already exists with this user
+      const { createConversation } = await import('@/services/message.service');
+      const user = users.find((u) => u.id.toString() === userId.toString());
+      
+      // Create a support conversation with the user
+      const response = await createConversation({
+        type: 'support',
+        title: `Support: ${user?.name || 'User'}`,
+        participantIds: [Number(userId)],
+      });
+      
+      // Navigate to messages page with the conversation
+      router.push(`/admin/messages?conversation=${response.conversation.id}`);
+    } catch (error: unknown) {
+      console.error('Failed to create conversation:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to start conversation';
+      showToast(errorMessage, 'error');
+    }
+  };
+
+  const handleArchive = async (id: number) => {
+    try {
+      await apiFetch(`/admin/users/${id}/archive`, { method: 'PATCH' });
+      showToast('User archived successfully', 'success');
+      await refetch();
+    } catch (error) {
+      console.error('Failed to archive user:', error);
+      showToast('Failed to archive user', 'error');
+    }
+  };
+
+  const handleUnarchive = async (id: number) => {
+    try {
+      await apiFetch(`/admin/users/${id}/unarchive`, { method: 'PATCH' });
+      showToast('User unarchived successfully', 'success');
+      await refetch();
+    } catch (error) {
+      console.error('Failed to unarchive user:', error);
+      showToast('Failed to unarchive user', 'error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
@@ -238,7 +284,7 @@ export default function UsersPage() {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all focus-within:border-black dark:focus-within:border-white flex flex-col sm:flex-row">
+      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all focus-within:border-black dark:focus-within:border-white flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
@@ -255,7 +301,7 @@ export default function UsersPage() {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="mt-4 sm:mt-0 sm:ml-4 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl focus:ring-0 transition-all text-zinc-900 dark:text-white outline-none cursor-pointer text-sm font-medium"
+          className="px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl focus:ring-0 transition-all text-zinc-900 dark:text-white outline-none cursor-pointer text-sm font-medium"
         >
           <option value="newest">Newest First</option>
           <option value="oldest">Oldest First</option>
@@ -264,6 +310,18 @@ export default function UsersPage() {
           <option value="role-admin">Admins First</option>
           <option value="role-user">Users First</option>
         </select>
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
+          <input
+            type="checkbox"
+            id="showArchived"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+            className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-black dark:text-white focus:ring-0 cursor-pointer"
+          />
+          <label htmlFor="showArchived" className="text-sm font-bold text-zinc-900 dark:text-white cursor-pointer whitespace-nowrap">
+            Show Archived
+          </label>
+        </div>
       </div>
 
       {/* Users Table */}
@@ -275,11 +333,15 @@ export default function UsersPage() {
         currentPage={currentPage}
         itemsPerPage={ITEMS_PER_PAGE}
         updatingId={updatingId}
+        showArchived={showArchived}
         onViewProfile={handleViewProfile}
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
         onRoleChange={handleOpenConfirm}
         onPageChange={setCurrentPage}
+        onMessage={handleMessageUser}
+        onArchive={handleArchive}
+        onUnarchive={handleUnarchive}
       />
 
       {/* Role Change Modal */}
@@ -329,6 +391,7 @@ export default function UsersPage() {
         onRefresh={() =>
           selectedUserId ? handleViewProfile(selectedUserId) : Promise.resolve()
         }
+        onMessage={handleMessageUser}
       />
     </div>
   );

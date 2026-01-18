@@ -44,9 +44,34 @@ export const orderService = {
   /**
    * Fetch all orders for the current user
    */
-  async getMyOrders(): Promise<Order[]> {
-    const data = await apiFetch(API_ENDPOINTS.ORDERS.MY_ORDERS);
+  async getMyOrders(includeArchived: boolean = false): Promise<Order[]> {
+    const params = new URLSearchParams();
+    if (includeArchived) {
+      params.append('includeArchived', 'true');
+    }
+    const url = `${API_ENDPOINTS.ORDERS.MY_ORDERS}${params.toString() ? `?${params.toString()}` : ''}`;
+    const data = await apiFetch(url);
     return data.data.orders as Order[];
+  },
+
+  /**
+   * Archive an order
+   */
+  async archiveOrder(orderId: number): Promise<Order> {
+    const data = await apiFetch(`${API_ENDPOINTS.ORDERS.BY_ID(orderId)}/archive`, {
+      method: 'PATCH',
+    });
+    return data.data.order as Order;
+  },
+
+  /**
+   * Unarchive an order
+   */
+  async unarchiveOrder(orderId: number): Promise<Order> {
+    const data = await apiFetch(`${API_ENDPOINTS.ORDERS.BY_ID(orderId)}/unarchive`, {
+      method: 'PATCH',
+    });
+    return data.data.order as Order;
   },
 
   /**

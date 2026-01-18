@@ -3,6 +3,7 @@
 import { lazy, Suspense } from 'react';
 import { Header, Footer } from "@/components/layout";
 import { LoadingSpinner } from "@/components/ui";
+import { ChatWidget } from "@/components/common";
 
 // Lazy load heavy components for better initial load performance
 const OfferBanner = lazy(() => 
@@ -35,6 +36,7 @@ export default function ShopLayout({
             <Suspense fallback={null}>
                 <CheckoutModal />
             </Suspense>
+            <ChatWidget />
             <Footer />
         </>
     );

@@ -284,6 +284,56 @@ export const getUserDetails = catchAsync(async (req: UserRequest, res: Response,
   });
 });
 
+// Get list of other users (for regular users to see and message)
+export const getOtherUsers = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
+  const currentUserId = req.user!.id!;
+  const { search, page = "1", limit = "50" } = req.query;
+
+  const pageNum = parseInt(page as string);
+  const limitNum = parseInt(limit as string);
+  const skip = (pageNum - 1) * limitNum;
+
+  const where: any = {
+    id: { not: currentUserId },
+    role: "user", // Only show regular users, not admins
+  };
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search as string, mode: "insensitive" } },
+      { email: { contains: search as string, mode: "insensitive" } },
+    ];
+  }
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        profileImage: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limitNum,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      users,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    },
+  });
+});
+
 export const getAllUsers = factory.getAll(prisma.user);
 export const getUser = catchAsync(async (req: UserRequest, res: Response, next: NextFunction) => {
   const userId = parseInt(req.params.id);

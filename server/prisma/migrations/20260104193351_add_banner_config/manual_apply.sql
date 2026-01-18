@@ -13,3 +13,6 @@ ALTER TABLE "Banner" ADD COLUMN IF NOT EXISTS "config" JSONB;
 -- FROM information_schema.columns 
 -- WHERE table_name = 'Banner' AND column_name IN ('image', 'config');
 
+
+
+

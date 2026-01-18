@@ -331,13 +331,22 @@ export const getMyOrders = catchAsync(async (req: UserRequest, res: Response, ne
   // Get orders by userId OR by customerEmail (for guest orders)
   // Normalize email to lowercase for case-insensitive matching
   const normalizedEmail = user.email.toLowerCase().trim();
+  const { includeArchived } = req.query;
+  
+  const where: any = {
+    OR: [
+      { userId: req.user!.id },
+      { customerEmail: normalizedEmail },
+    ],
+  };
+  
+  // Filter archived orders unless includeArchived is true
+  if (includeArchived !== 'true') {
+    where.isArchived = false;
+  }
+  
   const orders = await prisma.order.findMany({
-    where: {
-      OR: [
-        { userId: req.user!.id },
-        { customerEmail: normalizedEmail },
-      ],
-    },
+    where,
     include: {
       items: {
         include: {
@@ -405,3 +414,113 @@ export const getOrder = catchAsync(async (req: UserRequest, res: Response, next:
     data: { order },
   });
 });
+
+// Archive order (user can archive their own orders)
+export const archiveOrder = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const orderId = parseInt(req.params.id);
+
+    if (isNaN(orderId)) {
+      return next(new AppError("Invalid order ID", 400));
+    }
+
+    // Get user email for guest order check
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { email: true },
+    });
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    const normalizedEmail = user.email.toLowerCase().trim();
+
+    // Find order and verify ownership
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        OR: [
+          { userId: req.user!.id },
+          { customerEmail: normalizedEmail },
+        ],
+      },
+    });
+
+    if (!order) {
+      return next(new AppError("Order not found or access denied", 404));
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { isArchived: true },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: { order: updatedOrder },
+    });
+  }
+);
+
+// Unarchive order (user can unarchive their own orders)
+export const unarchiveOrder = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const orderId = parseInt(req.params.id);
+
+    if (isNaN(orderId)) {
+      return next(new AppError("Invalid order ID", 400));
+    }
+
+    // Get user email for guest order check
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { email: true },
+    });
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    const normalizedEmail = user.email.toLowerCase().trim();
+
+    // Find order and verify ownership
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        OR: [
+          { userId: req.user!.id },
+          { customerEmail: normalizedEmail },
+        ],
+      },
+    });
+
+    if (!order) {
+      return next(new AppError("Order not found or access denied", 404));
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { isArchived: false },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: { order: updatedOrder },
+    });
+  }
+);

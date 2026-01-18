@@ -16,7 +16,8 @@ import {
     AlertCircle,
     Plus,
     Trash2,
-    Package
+    Package,
+    MessageSquare
 } from 'lucide-react';
 import { AddToCartModal, CreateOrderModal } from '@/components/modals';
 import { resolveImageUrl } from '@/lib/utils/imageUtils';
@@ -30,6 +31,7 @@ interface UserDetailsDrawerProps {
     onRemoveFromCart?: (itemId: number) => Promise<void>;
     onCreateOrder?: (orderData: any) => Promise<void>;
     onRefresh?: () => Promise<void>;
+    onMessage?: (userId: number) => Promise<void>;
 }
 
 const statusColors: Record<string, string> = {
@@ -39,11 +41,20 @@ const statusColors: Record<string, string> = {
     cancelled: 'bg-white text-zinc-400 border-2 border-zinc-100 dark:bg-zinc-900 dark:border-zinc-800',
 };
 
-export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart, onRemoveFromCart, onCreateOrder, onRefresh }: UserDetailsDrawerProps) {
+export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart, onRemoveFromCart, onCreateOrder, onRefresh, onMessage }: UserDetailsDrawerProps) {
     const router = useRouter();
     const [showAddToCart, setShowAddToCart] = useState(false);
     const [showCreateOrder, setShowCreateOrder] = useState(false);
     const [removingItemId, setRemovingItemId] = useState<number | null>(null);
+
+    const handleMessage = async () => {
+        if (!data?.user?.id || !onMessage) return;
+        try {
+            await onMessage(data.user.id);
+        } catch (error) {
+            console.error('Failed to start conversation:', error);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -92,7 +103,7 @@ export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart,
                             <div className="h-20 w-20 rounded-3xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-3xl text-zinc-400">
                                 {data.user.name.charAt(0)}
                             </div>
-                            <div>
+                            <div className="flex-1">
                                 <h3 className="text-2xl font-black text-zinc-900 dark:text-white">{data.user.name}</h3>
                                 <div className="flex flex-col gap-1 mt-1">
                                     <div className="flex items-center gap-2 text-sm text-zinc-500">
@@ -103,6 +114,16 @@ export function UserDetailsDrawer({ isOpen, onClose, data, loading, onAddToCart,
                                     </div>
                                 </div>
                             </div>
+                            {onMessage && (
+                                <button
+                                    onClick={handleMessage}
+                                    className="px-4 py-2.5 rounded-xl bg-black dark:bg-white text-white dark:text-black font-black uppercase tracking-widest text-[10px] hover:opacity-90 transition-all flex items-center gap-2 cursor-pointer"
+                                    title="Message User"
+                                >
+                                    <MessageSquare size={14} />
+                                    Message
+                                </button>
+                            )}
                         </div>
 
                         {/* Metrics Grid */}

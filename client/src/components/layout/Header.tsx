@@ -132,14 +132,14 @@ export default function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8">
             {siteConfig.header.navigation.map((item) => {
               if (item.type === "link") {
                 return (
                   <Link
                     key={item.label}
                     href={item.href}
-                    className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 transition-colors hover:text-white"
+                    className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 transition-colors hover:text-white cursor-pointer whitespace-nowrap"
                   >
                     {item.label}
                   </Link>
@@ -152,7 +152,7 @@ export default function Header() {
                   onClick={(e) =>
                     handleSectionClick(e, item.href.replace("#", ""))
                   }
-                  className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 transition-colors hover:text-white cursor-pointer"
+                  className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 transition-colors hover:text-white cursor-pointer whitespace-nowrap"
                 >
                   {item.label}
                 </a>
@@ -160,69 +160,82 @@ export default function Header() {
             })}
           </nav>
 
-          {/* Icons */}
-          <div className="hidden items-center space-x-6 md:flex">
-            {/* Admin Toggle */}
+          {/* Right Side Actions */}
+          <div className="hidden items-center gap-4 md:flex">
+            {/* Admin Panel Button */}
             {mounted && isAuthenticated && currentUser?.role === "admin" && (
               <Link
                 href="/admin/dashboard"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white text-xs font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-all shadow-sm"
+                className="px-4 py-1.5 rounded-full border border-white text-xs font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-all shadow-sm whitespace-nowrap"
               >
                 {siteConfig.header.buttons.adminPanel}
               </Link>
             )}
 
-            <button className="text-zinc-400 transition-all hover:text-white hover:scale-110 cursor-pointer">
+            {/* Search */}
+            <button
+              className="p-2 text-zinc-400 transition-all hover:text-white hover:scale-110 cursor-pointer"
+              title="Search"
+            >
               <Search className="h-5 w-5" />
             </button>
 
-            {/* Auth Buttons */}
+            {/* Divider */}
+            {mounted && isAuthenticated && (
+              <div className="h-6 w-px bg-zinc-700" />
+            )}
+
+            {/* User Actions */}
             {mounted && isAuthenticated ? (
-              <div className="flex items-center gap-4">
+              <>
                 <Link
                   href="/profile"
-                  className="text-zinc-400 transition-all hover:text-white hover:scale-110 cursor-pointer"
+                  className="p-1 text-zinc-400 transition-all hover:text-white hover:scale-110 cursor-pointer"
                   title="Profile"
                 >
                   <Avatar user={currentUser} size="sm" />
                 </Link>
                 <Link
                   href="/orders"
-                  className="text-xs font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+                  className="text-xs font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors whitespace-nowrap"
                 >
                   {siteConfig.header.buttons.myOrders}
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="text-zinc-400 transition-all hover:text-white hover:scale-110 cursor-pointer"
+                  className="p-2 text-zinc-400 transition-all hover:text-white hover:scale-110 cursor-pointer"
                   title={siteConfig.header.buttons.logout}
                 >
                   <LogOut className="h-5 w-5" />
                 </button>
-              </div>
+              </>
             ) : (
-              <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+              <div className="flex items-center gap-3">
                 <Link
                   href="/login"
-                  className="text-zinc-400 hover:text-white transition-colors"
+                  className="text-xs font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors whitespace-nowrap"
                 >
                   {siteConfig.header.buttons.signIn}
                 </Link>
                 <Link
                   href="/signup"
-                  className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 transition-all shadow-sm"
+                  className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 transition-all shadow-sm text-xs font-black uppercase tracking-widest whitespace-nowrap"
                 >
                   {siteConfig.header.buttons.signUp}
                 </Link>
               </div>
             )}
+
+            {/* Cart */}
+            <div className="h-6 w-px bg-zinc-700" />
             <button
               onClick={handleToggleCart}
-              className="relative text-zinc-400 transition-all hover:text-white hover:scale-110 cursor-pointer"
+              className="relative p-2 text-zinc-400 transition-all hover:text-white hover:scale-110 cursor-pointer"
+              title="Cart"
             >
               <ShoppingBag className="h-5 w-5" />
               {mounted && cartCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] text-black shadow-sm">
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-black shadow-sm">
                   {cartCount}
                 </span>
               )}
@@ -230,10 +243,24 @@ export default function Header() {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden">
+          <div className="flex md:hidden items-center gap-3 flex-shrink-0">
+            {/* Mobile Cart Button */}
+            <button
+              onClick={handleToggleCart}
+              className="relative p-2 text-zinc-400 hover:text-white transition-colors"
+              title="Cart"
+            >
+              <ShoppingBag className="h-5 w-5" />
+              {mounted && cartCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-black shadow-sm">
+                  {cartCount}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-zinc-400 hover:text-white"
+              className="p-2 text-zinc-400 hover:text-white transition-colors"
+              aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
                 <X className="h-6 w-6" />
@@ -256,7 +283,7 @@ export default function Header() {
                     <Link
                       key={item.label}
                       href={item.href}
-                      className="text-xl font-black uppercase tracking-tighter text-zinc-400 hover:text-white"
+                      className="text-xl font-black uppercase tracking-tighter text-zinc-400 hover:text-white cursor-pointer"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {item.label}
