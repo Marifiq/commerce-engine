@@ -116,6 +116,11 @@ app.use("/api/v1/payments", paymentRouter);
 import messageRouter from "./routes/messageRouter.js";
 app.use("/api/v1/messages", messageRouter);
 
+// Health check for Railway
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // Handle undefined routes
 app.all("*path", (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
