@@ -13,30 +13,35 @@ export async function seedUsers(prisma: PrismaClient) {
             email: 'admin@example.com',
             password: adminPassword,
             role: 'admin',
+            isEmailVerified: true,
         },
         {
             name: 'John Doe',
             email: 'john@example.com',
             password: userPassword,
             role: 'user',
+            isEmailVerified: true,
         },
         {
             name: 'Jane Smith',
             email: 'jane@example.com',
             password: userPassword,
             role: 'user',
+            isEmailVerified: true,
         },
         {
             name: 'Alice Johnson',
             email: 'alice@example.com',
             password: userPassword,
             role: 'user',
+            isEmailVerified: true,
         },
         {
             name: 'Bob Wilson',
             email: 'bob@example.com',
             password: userPassword,
             role: 'user',
+            isEmailVerified: true,
         }
     ];
 

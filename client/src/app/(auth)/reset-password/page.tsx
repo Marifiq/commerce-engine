@@ -95,7 +95,6 @@ export default function ResetPasswordPage() {
                                 </div>
                                 <input
                                     id="code"
-                                    name="code"
                                     type="text"
                                     maxLength={6}
                                     className={`block w-full rounded-md border py-2 pl-10 pr-3 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.code && formik.errors.code
@@ -126,7 +125,6 @@ export default function ResetPasswordPage() {
                                 </div>
                                 <input
                                     id="password"
-                                    name="password"
                                     type={showPassword ? 'text' : 'password'}
                                     autoComplete="new-password"
                                     className={`block w-full rounded-md border py-2 pl-10 pr-10 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.password && formik.errors.password
@@ -164,7 +162,6 @@ export default function ResetPasswordPage() {
                                 </div>
                                 <input
                                     id="confirmPassword"
-                                    name="confirmPassword"
                                     type={showConfirmPassword ? 'text' : 'password'}
                                     autoComplete="new-password"
                                     className={`block w-full rounded-md border py-2 pl-10 pr-10 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.confirmPassword && formik.errors.confirmPassword
@@ -213,4 +210,3 @@ export default function ResetPasswordPage() {
         </div>
     );
 }
-

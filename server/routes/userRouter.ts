@@ -1,9 +1,25 @@
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import * as userController from "../controllers/userController.js";
 import * as authController from "../controllers/authController.js";
-import passport from "../utils/passport.js";
+import passport, { isGoogleAuthConfigured } from "../utils/passport.js";
 
 const router = express.Router();
+
+const requireGoogleAuthConfigured = (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isGoogleAuthConfigured) {
+    return res.status(503).json({
+      status: "fail",
+      message:
+        "Google OAuth is not configured on this server. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it.",
+    });
+  }
+
+  next();
+};
 
 // 1) PUBLIC ROUTES
 router.post("/signup", authController.signup);
@@ -15,9 +31,14 @@ router.post("/forget-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);
 
 // Google OAuth routes
-router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get(
+  "/auth/google",
+  requireGoogleAuthConfigured,
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
 router.get(
   "/auth/google/callback",
+  requireGoogleAuthConfigured,
   passport.authenticate("google", { session: false, failureRedirect: "/login" }),
   authController.googleCallback
 );

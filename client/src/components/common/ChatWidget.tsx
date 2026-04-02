@@ -36,11 +36,6 @@ export function ChatWidget() {
     setMounted(true);
   }, []);
 
-  // Don't render if user is not authenticated or component hasn't mounted yet
-  if (!mounted || !isAuthenticated) {
-    return null;
-  }
-
   // Load conversations
   const loadConversations = useCallback(async () => {
     try {
@@ -188,7 +183,7 @@ export function ChatWidget() {
     const searchLower = searchTerm.toLowerCase();
     return (
       conv.title?.toLowerCase().includes(searchLower) ||
-      conv.participants.some((p) => 
+      conv.participants.some((p) =>
         p.user.name.toLowerCase().includes(searchLower) ||
         p.user.email.toLowerCase().includes(searchLower)
       )
@@ -212,6 +207,11 @@ export function ChatWidget() {
     }
   };
 
+  // Don't render if user is not authenticated or component hasn't mounted yet
+  if (!mounted || !isAuthenticated) {
+    return null;
+  }
+
   return (
     <>
       {/* Floating Button */}
@@ -229,9 +229,8 @@ export function ChatWidget() {
       {/* Chat Window */}
       {isOpen && (
         <div
-          className={`fixed bottom-6 right-6 z-50 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl transition-all duration-300 ${
-            isMinimized ? 'h-16 w-80' : 'h-[600px] w-[400px] md:w-[500px]'
-          } flex flex-col`}
+          className={`fixed bottom-6 right-6 z-50 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl transition-all duration-300 ${isMinimized ? 'h-16 w-80' : 'h-[600px] w-[400px] md:w-[500px]'
+            } flex flex-col`}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800 bg-black dark:bg-zinc-900 rounded-t-2xl">
@@ -294,4 +293,3 @@ export function ChatWidget() {
     </>
   );
 }
-

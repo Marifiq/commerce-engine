@@ -104,7 +104,6 @@ export default function VerifyEmailPage() {
                                 </div>
                                 <input
                                     id="code"
-                                    name="code"
                                     type="text"
                                     maxLength={6}
                                     className={`block w-full rounded-md border py-2 pl-10 pr-3 sm:text-sm focus:outline-none focus:ring-1 ${formik.touched.code && formik.errors.code
@@ -163,4 +162,3 @@ export default function VerifyEmailPage() {
         </div>
     );
 }
-
