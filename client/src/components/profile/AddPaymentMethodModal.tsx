@@ -104,8 +104,9 @@ function CardForm({
       });
 
       if (error) {
-        setCardError(error.message);
-        throw new Error(error.message);
+        const stripeErrorMessage = error.message || "Failed to create payment method";
+        setCardError(stripeErrorMessage);
+        throw new Error(stripeErrorMessage);
       }
 
       if (!paymentMethod) {
@@ -291,8 +292,7 @@ export default function AddPaymentMethodModal({
   });
 
   const stripeOptions: StripeElementsOptions = {
-    mode: "payment",
-    currency: "usd",
+    mode: "setup",
   };
 
   return (

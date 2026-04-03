@@ -21,7 +21,7 @@ export default function AdminLayout({
                 <div className="min-h-screen bg-[#fafafa] dark:bg-black text-zinc-900 dark:text-zinc-100">
                     <Suspense fallback={
                         <div className="fixed left-0 top-0 h-screen w-72 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
-                            <LoadingSpinner size="medium" />
+                            <LoadingSpinner size="default" />
                         </div>
                     }>
                         <AdminSidebar />

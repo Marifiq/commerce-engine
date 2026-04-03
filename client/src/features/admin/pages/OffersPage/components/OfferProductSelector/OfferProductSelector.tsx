@@ -2,7 +2,8 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { ChevronDown, X } from 'lucide-react';
-import { Product, Category } from '@/types';
+import { Product } from '@/types/product';
+import { Category } from '@/types/category';
 import { resolveImageUrl } from '@/lib/utils/imageUtils';
 import { ProductSearch } from './ProductSearch';
 import { ProductList } from './ProductList';

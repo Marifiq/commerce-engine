@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiFetch } from "@/lib/utils/api";
-import { Policy } from "@/types";
+import { Policy } from "@/types/policy";
 import { LoadingSpinner } from "@/components/ui";
 import { ArrowLeft, Package, DollarSign } from "lucide-react";
 import Link from "next/link";

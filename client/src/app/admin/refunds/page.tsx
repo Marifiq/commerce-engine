@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/utils/api";
-import { Refund } from "@/types";
+import { Refund } from "@/types/refund";
 import { useToast } from "@/contexts";
 import { LoadingSpinner, Modal, Pagination } from "@/components/ui";
 import { Search, Eye, CheckCircle, X, Clock, DollarSign } from "lucide-react";

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/utils/api";
-import { Policy, PolicyType } from "@/types";
+import { Policy, PolicyType } from "@/types/policy";
 import { useToast } from "@/contexts";
 import { LoadingSpinner } from "@/components/ui";
 import { Plus, Edit2, Eye, Save, X } from "lucide-react";

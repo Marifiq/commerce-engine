@@ -5,11 +5,11 @@
 import { handleGlobalError } from "./errorHandler";
 import { getApiBaseUrl } from "../config/env";
 
-interface FetchOptions extends RequestInit {
+type FetchOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   showError?: boolean; // Option to disable automatic error display
   errorTitle?: string; // Custom error title
-}
+};
 
 export const apiFetch = async (
   endpoint: string,

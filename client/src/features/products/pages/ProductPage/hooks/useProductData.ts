@@ -3,7 +3,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Product, Review } from '@/types';
+import { Product } from '@/types/product';
+import { Review } from '@/types/review';
 import { productService } from '@/services/product.service';
 import { reviewService } from '@/services/review.service';
 

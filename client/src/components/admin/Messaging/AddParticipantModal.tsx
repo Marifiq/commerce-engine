@@ -85,7 +85,7 @@ export function AddParticipantModal({
         <div className="w-full">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <LoadingSpinner size="medium" />
+              <LoadingSpinner size="default" />
             </div>
           ) : users.length === 0 ? (
             <p className="text-center py-8 text-zinc-500 dark:text-zinc-400">

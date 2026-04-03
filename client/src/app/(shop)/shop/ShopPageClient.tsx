@@ -3,7 +3,7 @@
 import { useEffect, useRef, lazy, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Category } from '@/types/category';
-import { Product } from '@/types';
+import { Product } from '@/types/product';
 import { gsap } from 'gsap';
 import { ShopHeader } from '@/features/products/pages/ShopPage/components/ShopHeader';
 import { ShopFilters } from '@/features/products/pages/ShopPage/components/ShopFilters';

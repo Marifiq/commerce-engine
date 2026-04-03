@@ -17,7 +17,7 @@ export interface Offer {
   title: string;
   description?: string | null;
   discountPercent: number;
-  targetType: string; // "product", "category", or "all"
+  targetType: 'product' | 'category' | 'all';
   targetId?: number | null;
   targetName?: string | null;
   startDate?: string | null;

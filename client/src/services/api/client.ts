@@ -5,11 +5,11 @@
 import { getApiBaseUrl } from "@/lib/config/env";
 import { handleGlobalError } from "@/lib/utils/errorHandler";
 
-interface FetchOptions extends RequestInit {
+type FetchOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   showError?: boolean;
   errorTitle?: string;
-}
+};
 
 class ApiClient {
   private baseUrl: string;

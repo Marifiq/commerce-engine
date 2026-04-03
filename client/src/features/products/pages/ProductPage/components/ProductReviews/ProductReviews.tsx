@@ -1,7 +1,8 @@
 'use client';
 
 import { Star } from 'lucide-react';
-import { Product, Review } from '@/types';
+import { Product } from '@/types/product';
+import { Review } from '@/types/review';
 import { ReviewList } from './ReviewList';
 
 interface ProductReviewsProps {

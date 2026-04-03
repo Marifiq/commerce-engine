@@ -17,7 +17,8 @@ import {
   Archive,
   ArchiveRestore,
 } from "lucide-react";
-import { Product, Category } from "@/types";
+import { Product } from "@/types/product";
+import { Category } from "@/types/category";
 import { useToast } from "@/contexts";
 import { Modal, Pagination } from "@/components/ui";
 import { resolveImageUrl } from "@/lib/utils/imageUtils";

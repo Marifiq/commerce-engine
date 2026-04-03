@@ -273,6 +273,7 @@ export default function CheckoutModal() {
                         city: user.addressCity || '',
                         zip: user.addressZip || '',
                         paymentMethod: formik.values.paymentMethod, // Keep existing payment method
+                        paymentMethodId: formik.values.paymentMethodId,
                     });
                 }
             } catch (error) {
@@ -291,6 +292,7 @@ export default function CheckoutModal() {
                         city: currentUser.addressCity || '',
                         zip: currentUser.addressZip || '',
                         paymentMethod: formik.values.paymentMethod,
+                        paymentMethodId: formik.values.paymentMethodId,
                     });
                 }
                 // Silently fail - user can still fill form manually

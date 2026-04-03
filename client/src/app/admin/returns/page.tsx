@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/utils/api";
-import { Return } from "@/types";
+import { Return } from "@/types/return";
 import { useToast } from "@/contexts";
 import { LoadingSpinner, Modal, Pagination } from "@/components/ui";
 import { Search, Eye, CheckCircle, X, Clock, Package } from "lucide-react";

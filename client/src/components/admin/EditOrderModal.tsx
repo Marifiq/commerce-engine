@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Edit2, ChevronDown, Search, ArrowUpDown } from 'lucide-react';
 import { apiFetch } from '@/lib/utils/api';
 import { useToast } from '@/contexts';
-import { Product, Category } from '@/types';
+import { Product } from '@/types/product';
+import { Category } from '@/types/category';
 import { resolveImageUrl } from '@/lib/utils/imageUtils';
 import { LoadingSpinner } from '@/components/ui';
 
@@ -90,7 +91,7 @@ export function EditOrderModal({ isOpen, onClose, onUpdate, order }: EditOrderMo
         try {
             setProductsLoading(true);
             const res = await apiFetch('/products');
-            const fetchedProducts = res.data.data || [];
+            const fetchedProducts: Product[] = res.data.data || [];
             setProducts(fetchedProducts);
             
             // Populate product info for items that might be missing it

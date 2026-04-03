@@ -15,7 +15,8 @@ import { ProductInfo } from "@/features/products/pages/ProductPage/components/Pr
 import { ProductActions } from "@/features/products/pages/ProductPage/components/ProductActions";
 import { ProductSpecs } from "@/features/products/pages/ProductPage/components/ProductSpecs";
 import { ProductReviews } from "@/features/products/pages/ProductPage/components/ProductReviews";
-import { Product, Review } from "@/types";
+import { Product } from "@/types/product";
+import { Review } from "@/types/review";
 
 // Lazy load heavy modal components
 const MediaViewer = lazy(() => 

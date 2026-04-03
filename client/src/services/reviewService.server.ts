@@ -3,7 +3,7 @@
  */
 
 import { serverApiFetch } from "@/lib/utils/api-server";
-import { Review } from "@/types";
+import { Review } from "@/types/review";
 
 export const reviewServiceServer = {
   /**

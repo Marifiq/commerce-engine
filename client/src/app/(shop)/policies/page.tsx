@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/utils/api";
-import { Policy } from "@/types";
+import { Policy } from "@/types/policy";
 import { LoadingSpinner } from "@/components/ui";
 import { FileText, Package, DollarSign, Shield, Truck, Scale, HelpCircle, Mail, Headphones, BookOpen, Ruler } from "lucide-react";
 import { useSelector } from "react-redux";

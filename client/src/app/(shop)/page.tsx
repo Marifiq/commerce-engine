@@ -97,7 +97,7 @@ export default function Home() {
   // Loading fallback component
   const SectionLoader = () => (
     <div className="flex items-center justify-center py-20">
-      <LoadingSpinner size="medium" />
+      <LoadingSpinner size="default" />
     </div>
   );
 

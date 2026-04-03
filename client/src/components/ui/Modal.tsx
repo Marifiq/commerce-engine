@@ -6,9 +6,10 @@ import { X, AlertTriangle } from 'lucide-react';
 interface ModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: () => void;
+    onConfirm?: () => void;
     title: string;
-    message: React.ReactNode;
+    message?: React.ReactNode;
+    children?: React.ReactNode;
     confirmText?: string;
     cancelText?: string;
     type?: 'danger' | 'info';
@@ -21,6 +22,7 @@ export function Modal({
     onConfirm,
     title,
     message,
+    children,
     confirmText = 'Confirm',
     cancelText = 'Cancel',
     type = 'info',
@@ -44,33 +46,41 @@ export function Modal({
                         {title}
                     </h2>
 
-                    <div className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-8">
-                        {message}
-                    </div>
+                    {children ? (
+                        <div className="w-full mt-4 text-left">
+                            {children}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-8">
+                                {message}
+                            </div>
 
-                    <div className={`flex gap-3 w-full ${!cancelText ? 'justify-center' : ''}`}>
-                        {cancelText && (
-                            <button
-                                onClick={onClose}
-                                className="flex-1 px-4 py-3 rounded-2xl border-2 border-zinc-100 dark:border-zinc-800 text-zinc-500 font-black uppercase tracking-widest text-[10px] hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
-                            >
-                                {cancelText}
-                            </button>
-                        )}
-                        <button
-                            onClick={onConfirm}
-                            disabled={loading}
-                            className={`${cancelText ? 'flex-1' : 'px-8'} px-4 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-black/5 cursor-pointer flex items-center justify-center gap-2 ${type === 'danger'
-                                ? 'bg-black text-white dark:bg-white dark:text-black'
-                                : 'bg-black text-white dark:bg-white dark:text-black'
-                                } hover:opacity-90 disabled:opacity-50`}
-                        >
-                            {loading && (
-                                <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                            )}
-                            {confirmText}
-                        </button>
-                    </div>
+                            <div className={`flex gap-3 w-full ${!cancelText ? 'justify-center' : ''}`}>
+                                {cancelText && (
+                                    <button
+                                        onClick={onClose}
+                                        className="flex-1 px-4 py-3 rounded-2xl border-2 border-zinc-100 dark:border-zinc-800 text-zinc-500 font-black uppercase tracking-widest text-[10px] hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+                                    >
+                                        {cancelText}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={onConfirm}
+                                    disabled={loading || !onConfirm}
+                                    className={`${cancelText ? 'flex-1' : 'px-8'} px-4 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-black/5 cursor-pointer flex items-center justify-center gap-2 ${type === 'danger'
+                                        ? 'bg-black text-white dark:bg-white dark:text-black'
+                                        : 'bg-black text-white dark:bg-white dark:text-black'
+                                        } hover:opacity-90 disabled:opacity-50`}
+                                >
+                                    {loading && (
+                                        <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    )}
+                                    {confirmText}
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

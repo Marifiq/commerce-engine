@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { CartItem, Product } from '@/types';
+import { CartItem } from '@/types/cart';
+import { Product } from '@/types/product';
 import { cartService } from '@/services/cart.service';
 
 const GUEST_CART_KEY = 'shirt_guest_cart';

@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Plus, Search, Image as ImageIcon, Tag, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/utils/api';
-import { Product, Category } from '@/types';
+import { Product } from '@/types/product';
+import { Category } from '@/types/category';
 import { useToast } from '@/contexts';
 import { Modal } from '@/components/ui';
 import { useOffers, useOfferForm } from '@/features/admin/pages/OffersPage/hooks';

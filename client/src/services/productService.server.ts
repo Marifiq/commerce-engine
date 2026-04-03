@@ -3,7 +3,7 @@
  */
 
 import { serverApiFetch } from "@/lib/utils/api-server";
-import { Product } from "@/types";
+import { Product } from "@/types/product";
 
 export const productServiceServer = {
   /**

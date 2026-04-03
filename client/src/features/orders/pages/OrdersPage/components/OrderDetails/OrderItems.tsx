@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { Star, Edit2, Trash2, Film, ExternalLink } from 'lucide-react';
-import { Order, Review } from '@/types';
+import { Order } from '@/types/order';
+import { Review } from '@/types/review';
 import { resolveImageUrl } from '@/lib/utils/imageUtils';
 import { ReviewManagement } from '../ReviewManagement/ReviewManagement';
 

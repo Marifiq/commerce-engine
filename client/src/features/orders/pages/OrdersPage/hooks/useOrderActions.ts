@@ -5,7 +5,8 @@
 import { useState } from 'react';
 import { useAppDispatch } from '@/hooks/useRedux';
 import { addItemToCart } from '@/store/features/cart';
-import { Order, Product } from '@/types';
+import { Order } from '@/types/order';
+import { Product } from '@/types/product';
 import { productService } from '@/services/product.service';
 import { useToast } from '@/contexts';
 
